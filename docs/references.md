@@ -1,0 +1,12 @@
+cite:
+- crustal thickness
+    - wieczorek crustal thickness
+        - ICTA (scripts+dat): https://doi.org/10.5281/zenodo.6477509
+        - paper: https://doi.org/10.1029/2022JE007298
+    - recent paper: https://doi.org/10.22541/essoar.167810298.85030230/v1
+- grs
+    - dat: https://doi.org/10.1029/2022GL099235
+    - paper: https://doi.org/10.1029/2022GL099235
+- mag depth
+    - paper: https://doi.org/10.1029/2020JE006690
+    - dat: https://doi.org/10.5281/zenodo.4686358
