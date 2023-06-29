@@ -1,8 +1,8 @@
 # Compiled source
-# *.py[ocd]
+*.py[ocd]
 
 # Egg metadata
-# *.egg-info
+*.egg-info
 
 # setup.py dist directory
-# dist
+dist
