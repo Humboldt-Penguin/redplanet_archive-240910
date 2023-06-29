@@ -1,0 +1,166 @@
+# Helpful resources:
+#   - PyPA (Python Packaging Authority)
+#     - Python Packaging User Guide: https://packaging.python.org/en/latest/
+#     - Template: https://github.com/pypa/sampleproject/blob/main/pyproject.toml
+#       - See this file for more details on the various fields which have been removed from this file.
+#   - SetupTools documentation: https://setuptools.pypa.io/en/latest/index.html
+
+
+
+
+
+
+
+
+
+#######################################################################
+#######################################################################
+[project]
+#######################################################################
+
+name = "redplanet" 
+version = "0.0.1dev" 
+
+description = "User-friendly access (i.e. APIs) to various Mars data and derived quantities at arbitrary coordinates." 
+readme = "README.md"
+
+authors = [
+  {name = "Zain Eris Kamal", email = "zain.eris.kamal@rutgers.edu" } 
+]
+maintainers = [
+  {name = "Zain Eris Kamal", email = "zain.eris.kamal@rutgers.edu" } 
+]
+
+requires-python = ">=3.7"
+license = {file = "LICENSE.txt"}
+
+
+
+
+# This field lists other packages that your project depends on to run.
+# Any package you put here will be installed by pip when your project is
+# installed, so they must be valid existing projects.
+#
+# For an analysis of this field vs pip's requirements files see:
+# https://packaging.python.org/discussions/install-requires-vs-requirements/
+# dependencies = [ # Optional
+#   "pyshtools",
+#   "numpy",
+#   "matplotlib",
+#   "scipy",
+#   "gdown",
+#   "pandas",
+# ]
+### I skip this in favor of using automatic detection
+
+
+
+keywords = ["mars", "geophysics", "grs", "crust", "heat flow"] 
+
+classifiers = [ 
+  "Development Status :: 3 - Alpha",
+
+  "Operating System :: OS Independent",
+
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  'Topic :: Scientific/Engineering',
+  'Topic :: Scientific/Engineering :: Physics',
+  'Topic :: Scientific/Engineering :: GIS',
+
+  "Natural Language :: English",
+
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+]
+
+
+
+
+
+
+
+#######################################################################
+[project.optional-dependencies]
+#######################################################################
+# List additional groups of dependencies here (e.g. development
+# dependencies). Users will be able to install these using the "extras"
+# syntax, for example:
+#
+#   $ pip install sampleproject[dev]
+#
+# Similar to `dependencies` above, these must be valid existing
+# projects.
+jupyter = ["jupyter"]
+jupyterlab = ["jupyterlab"]
+
+
+
+
+
+
+
+
+#######################################################################
+# [project.scripts]  # Optional
+#######################################################################
+# The following would provide a command line executable called `sample`
+# which executes the function `main` from this package when invoked.
+# sample = "sample:main"
+
+
+
+
+
+
+
+#######################################################################
+[project.urls] 
+#######################################################################
+
+"Homepage" = "https://github.com/Humboldt-Penguin/redplanet"
+"Author" = "https://github.com/Humboldt-Penguin"
+
+
+
+
+
+
+
+
+
+#######################################################################
+#######################################################################
+[tool.setuptools]
+#######################################################################
+# This is configuration specific to the `setuptools` build backend.
+# If you are using a different build backend, you will need to change this.
+# If there are data files included in your packages that need to be
+# installed, specify them here.
+# package-data = {"sample" = ["*.dat"]}
+
+# py-modules = []
+
+
+
+#######################################################################
+[tool.setuptools.packages]
+#######################################################################
+
+find = {}  # Scan the project directory with the default parameters
+
+
+
+
+
+
+
+
+#######################################################################
+#######################################################################
+[build-system]
+#######################################################################
+requires = ["setuptools>=43.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
