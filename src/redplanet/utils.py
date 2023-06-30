@@ -82,7 +82,7 @@ def getPath(*args):
 # '''
 
 
-def print_dict(d: dict, indent: int = 0) -> None:
+def print_dict(d: dict, indent=0, format_pastable=False) -> None:
     """
     DESCRIPTION:
     ------------
@@ -92,15 +92,32 @@ def print_dict(d: dict, indent: int = 0) -> None:
     ------------
         d : dict
         indent : int
+        format_pastable : bool
+            If True, will format the output so that it can be pasted into a python script as an assignment to a variable.
 
     """
-    for key, value in d.items():
-        print('\t' * indent + str(key))
-        if isinstance(value, dict):
-            print_dict(value, indent+1)
-        else:
-            print('\t' * (indent+1) + str(value))
-    return
+    if format_pastable:
+        for key, value in d.items():
+            spacing = '\t' * indent
+            if isinstance(value, dict):
+                print(f"{spacing}'{key}': {{")
+
+                # Recursively print the nested dictionary
+                print_dict(value, indent+1, format_pastable)
+
+                print(f"{spacing}}},")
+            else:
+                print(f"{spacing}'{key}': '{value}',")
+    else:
+        for key, value in d.items():
+            print('\t' * indent + str(key))
+            if isinstance(value, dict):
+                print_dict(value, indent+1, format_pastable)
+            else:
+                print('\t' * (indent+1) + str(value))
+
+
+
 
 
 # def find_nth_substring(haystack, needle, n):

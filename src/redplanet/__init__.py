@@ -1,1 +1,0 @@
-from .DataManager import set_data_path
