@@ -2,23 +2,9 @@
 Written by Zain Kamal (zain.eris.kamal@rutgers.edu). Last updated 06/28/2023.
 https://github.com/Humboldt-Penguin/redplanet
 
-...
-
-RedPlanet module `GRS.py` allows you to get surface element concentrations derived from the 2001 Mar Odyssey Gamma Ray Spectrometer. The original data is defined in 5 degree bins, but this module allows you to calculate values at exact coordinates by linearly interpolating between the four nearest points. Both exact concentration and volatile-free (normalized to an H20/Cl/Si free basis) are available.
-
-...
-
-RESOURCES:
-    - Raw data:
-        - Paper: https://doi.org/10.1029/2022GL099235
-        - Dataset: https://digitalcommons.lsu.edu/geo_psl/1/
-    - Processing raw data to `GRS_meta_dat.pkl` file:
-        - Option 1: See `redplanet/docs/notebooks/generate_data/GRS/generate_GRS_data.ipynb`
-        - Option 2: Run `redplanet tutorial` in command line, navigate to the TODO
-    
+For more information, call `help(GRS)` or directly view docstring in `GRS/__init__.py`.
 
 """
-
 
 
 
@@ -32,6 +18,8 @@ import matplotlib.pyplot as plt
 
 import os
 import inspect
+
+
 
 
 ############################################################################################################################################
@@ -90,7 +78,7 @@ def get_meta_dat() -> dict:
 
 def loadData(path__dataDir: str = None) -> None:
     '''
-    Load data from pickled data file. Default option is the data file included in the package, but users can use data they've produced with the `generate_GRS_data.ipynb` notebook. Type `redplanet tutorial` in command line for more details.
+    Load data from compressed `.npy` data files. Default option is the data file included in the package, but users can use data they've produced with the `generate_GRS_data.ipynb` notebook. Type `redplanet tutorial` in command line for more details.
     '''
     
     if path__dataDir is None:
@@ -147,7 +135,9 @@ def getConcentration(element_name: str, lon: float, lat: float, normalize: bool 
         normalize : bool (default True)
             If True, normalize to a volatile-free (Cl, H2O, S) basis.
                 > "For such measurement [from GRS] to represent the bulk chemistry of the martian upper crust, it must be normalized to a volatile-free basis (22). That equates to a 7 to 14% increase in the K, Th, and U abundances (22), which we applied to the chemical maps by renormalizing to Cl, stoichiometric H2O, and S-free basis."
-                Source: "Groundwater production from geothermal heating on early Mars and implication for early martian habitability", Ojha et al. 2020, https://www.science.org/doi/10.1126/sciadv.abb1669                    
+                Source: "Groundwater production from geothermal heating on early Mars and implication for early martian habitability", Ojha et al. 2020, https://www.science.org/doi/10.1126/sciadv.abb1669
+        quantity : str (default 'concentration')
+            Quantity to plot. Options are ['concentration', 'sigma'].
 
     RETURN:
     ------------
@@ -266,7 +256,10 @@ def getConcentration(element_name: str, lon: float, lat: float, normalize: bool 
 
 
 
-def visualize(element_name: str, normalize: bool = True, quantity: str = 'concentration', lon_left: float = -180, lon_right: float = 180, lat_bottom: float = -75, lat_top: float = 75, grid_spacing: float = 5) -> None:
+def visualize(element_name: str, normalize: bool = True, quantity: str = 'concentration', 
+              lon_bounds: tuple = (-180,180), #lon_left: float = -180, lon_right: float = 180, 
+              lat_bounds: tuple = (-75,75), #lat_bottom: float = -75, lat_top: float = 75, 
+              grid_spacing: float = 5) -> None:
     """
     DESCRIPTION:
     ------------
@@ -280,12 +273,15 @@ def visualize(element_name: str, normalize: bool = True, quantity: str = 'concen
             If True, normalize to a volatile-free (Cl, H2O, S) basis. See `getConcentration` docstring for more details.
         quantity : str (default 'concentration')
             Quantity to plot. Options are ['concentration', 'sigma'].
-        lon_left, lon_right, lat_bottom, lat_top : float
+        lon_bounds, lat_bounds : tuple(2 floats) (default entire map)
             Bounding box for visualization. Longitude in range [-180, 180], latitude in range [-87.5, 87.5].
-        grid_spacing : float
+        grid_spacing : float (default 5 degrees)
             Spacing between "pixels" in degrees. Note that original data is 5x5 degree bins, so anything smaller than that will be interpolated. Also note that smaller resolutions will take longer to plot.
                 
     """
+
+    lon_left, lon_right = lon_bounds
+    lat_bottom, lat_top = lat_bounds
 
     __checkCoords(lon_left, lat_bottom)
     __checkCoords(lon_left, lat_top)
@@ -369,6 +365,6 @@ def visualize(element_name: str, normalize: bool = True, quantity: str = 'concen
     '''color bar'''
     cax = fig.add_axes([ax.get_position().x1+0.02,ax.get_position().y0,0.02,ax.get_position().height])
     cbar = plt.colorbar(im, cax=cax)
-    cbar.set_label(f'{chem_cased(element_name)} Concentration [out of 1]', y=0.5)
+    cbar.set_label(f'{chem_cased(element_name)} {quantity.capitalize()} [out of 1]', y=0.5)
 
     plt.show()
