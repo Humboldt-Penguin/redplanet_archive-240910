@@ -1,5 +1,5 @@
 """
-Written by Zain Kamal (zain.eris.kamal@rutgers.edu). Last updated 06/28/2023.
+Written by Zain Kamal (zain.eris.kamal@rutgers.edu).
 https://github.com/Humboldt-Penguin/redplanet
 
 For more information, call `help(GRS)` or directly view docstring in `GRS/__init__.py`.
@@ -25,6 +25,11 @@ import matplotlib.pyplot as plt
 ############################################################################################################################################
 """ module variables """
 
+
+
+
+
+
 __nanval: float = -1e10
 '''
 Value given to pixels where data is not defined (i.e. "NOT_APPLICABLE_CONSTANT"). In the data, this is 9999.999.
@@ -41,10 +46,10 @@ def get_nanval() -> float:
 
 
 
-grid_spacing = 5 # degrees
-lat_range = np.arange(87.5, -87.5 *1.0001, -grid_spacing)
-lon_range = np.arange(177.5, -177.5 *1.0001, -grid_spacing)
-lon_range_cycled = np.arange(182.5, -182.5 *1.0001, -grid_spacing)
+__grid_spacing = 5 # degrees
+__lat_range = np.arange(87.5, -87.5 *1.0001, -__grid_spacing)
+__lon_range = np.arange(177.5, -177.5 *1.0001, -__grid_spacing)
+__lon_range_cycled = np.arange(182.5, -182.5 *1.0001, -__grid_spacing)
 '''
 We opt to hardcode these values in the case of GRS because it's static. It's not hard to programmatically calculate these values in other cases -- the code for such is included but commented out below.
 '''
@@ -54,7 +59,9 @@ We opt to hardcode these values in the case of GRS because it's static. It's not
 
 
 
-rawdata_registry = {
+
+
+__rawdata_registry = {
     'al': {
         'hash': 'sha256:a5bc7cd78d8dcf9caa42b69a044b70d0d65bfff73c321bad6d501faa2d80fd64',
         'link': 'https://digitalcommons.lsu.edu/cgi/viewcontent.cgi?filename=9&article=1000&context=geo_psl&type=additional',
@@ -114,16 +121,14 @@ A convenient script to generate this dictionary:
     from redplanet import utils
     utils.print_dict(rawdata_registry, format_pastable=True)
 
+Backup of data is available here: https://drive.google.com/drive/folders/1ACdjD-4JaZjPEe-Zi0raghn_yxdabA0A?usp=sharing. You will know if the original source data was modified if you get an error about hashes not matching.
 '''
 
 
 
 
 
-__volatiles = ('cl', 'h2o', 's')
-'''
-Volatile elements. Used in `getConcentration` to normalize to a volatile-free basis. See docstring for more details.
-'''
+
 
 
 
@@ -160,12 +165,12 @@ def get_meta_dat() -> dict:
 
 '''download data (or access from cache) and load into `__meta_dat`'''
 
-for element_name in rawdata_registry:
+for element_name in __rawdata_registry:
 
     '''load from pooch download/cache'''
     filepath = pooch.retrieve(
-        url=rawdata_registry[element_name]['link'],
-        known_hash=rawdata_registry[element_name]['hash'],
+        url=__rawdata_registry[element_name]['link'],
+        known_hash=__rawdata_registry[element_name]['hash'],
         path=pooch.os_cache('redplanet')
     )
 
@@ -194,13 +199,13 @@ for element_name in rawdata_registry:
     """
 
 
-    data_names = ['concentration', 'sigma']
+    __data_names = ['concentration', 'sigma']
 
-    for i in range(len(data_names)):
+    for i in range(len(__data_names)):
         this_data = dat[:, 2+i]
         
         '''reshape to 2D, transpose to get [lon,lat] indexing'''
-        this_data = this_data.reshape(lat_range.shape[0], lon_range.shape[0]).T
+        this_data = this_data.reshape(__lat_range.shape[0], __lon_range.shape[0]).T
         # for index (i,j), `i` is longitude from `lon_range[0]` to `lon_range[-1]`, `j` is latitude from `lat_range[0]` to `lat_range[-1]`
 
 
@@ -219,14 +224,19 @@ for element_name in rawdata_registry:
 
 
         '''add to `meta_dat`'''
-        __meta_dat[element_name][data_names[i]] = this_data
+        __meta_dat[element_name][__data_names[i]] = this_data
 
 
 
 
 
+'''use this to pre-compute volatile concentration so we're accessing once instead of thrice. make appropriate changes in `getConcentration` as well. note that adding raw data into one grid and then doing bilinear interpolation is not different from doing bilinear interpolation individually and adding them up.'''
+__data_names = ['concentration', 'sigma']
+__meta_dat['cl+h2o+s'] = {}
 
-
+for data_name in __data_names:
+    __meta_dat['cl+h2o+s'][data_name] = __meta_dat['cl'][data_name] + __meta_dat['h2o'][data_name] + __meta_dat['s'][data_name]
+    __meta_dat['cl+h2o+s'][data_name] = np.where(__meta_dat['cl+h2o+s'][data_name] < 0, get_nanval(), __meta_dat['cl+h2o+s'][data_name])
 
 
 
@@ -262,7 +272,7 @@ def getConcentration(element_name: str, lon: float, lat: float, normalize=False,
     """
     DESCRIPTION:
     ------------
-        Get the concentration of an element at the desired coordinate derived from GRS data.
+        Get GRS-derived concentration/sigma of an element at a desired coordinate.
     
     PARAMETERS:
     ------------
@@ -333,30 +343,30 @@ def getConcentration(element_name: str, lon: float, lat: float, normalize=False,
     if not normalize: # just return the bilinear interpolation on the raw data
 
         # since `lon_range_cycled` and `lat_range` are decreasing rather than increasing, we do some trickery on top of `np.searchsorted()` to get the desired indices.
-        i_lon = lon_range_cycled.shape[0] - np.searchsorted(np.flip(lon_range_cycled), lon)
-        j_lat = lat_range.shape[0] - np.searchsorted(np.flip(lat_range), lat)
+        i_lon = __lon_range_cycled.shape[0] - np.searchsorted(np.flip(__lon_range_cycled), lon) # note that i_lon is derived from lon_range_cycled, not lon_range, so only use it to index that!
+        j_lat = __lat_range.shape[0] - np.searchsorted(np.flip(__lat_range), lat)
 
         element_name = element_name.lower()
 
         points = (
             (
-                lon_range_cycled[i_lon - 1],
-                lat_range[j_lat - 1],
+                __lon_range_cycled[i_lon - 1],
+                __lat_range[j_lat - 1],
                 __meta_dat[element_name][quantity][i_lon - 1, j_lat - 1]
             ),
             (
-                lon_range_cycled[i_lon],
-                lat_range[j_lat - 1],
+                __lon_range_cycled[i_lon],
+                __lat_range[j_lat - 1],
                 __meta_dat[element_name][quantity][i_lon, j_lat - 1]
             ),
             (
-                lon_range_cycled[i_lon - 1],
-                lat_range[j_lat],
+                __lon_range_cycled[i_lon - 1],
+                __lat_range[j_lat],
                 __meta_dat[element_name][quantity][i_lon - 1, j_lat]
             ),
             (
-                lon_range_cycled[i_lon],
-                lat_range[j_lat],
+                __lon_range_cycled[i_lon],
+                __lat_range[j_lat],
                 __meta_dat[element_name][quantity][i_lon, j_lat]
             )
         )
@@ -371,27 +381,50 @@ def getConcentration(element_name: str, lon: float, lat: float, normalize=False,
         #     )
         #     for i, j in [(i, j) for i in range(2) for j in range(2)]
         # ]
-        
 
-        return bilinear_interpolation(lon, lat, points)
+        val = bilinear_interpolation(lon, lat, points)
+
+        return val if val >= 0 else get_nanval() # This line ensures that where GRS data is undefined, we return exactly the nanval. Without this, we might return very large negative values that approach the nanval. Examples here: https://files.catbox.moe/khetcp.png & https://files.catbox.moe/sri8m4.png
     
     
     else: # Uses recursion. See docstring for more details on `normalize=True` parameter.
-
+        
+        __volatiles = ('cl', 'h2o', 's')
+        
         if element_name in __volatiles:
-            raise Exception('Cannot normalize a volatile to a volatile-free basis.')
+            raise Exception('Cannot normalize a volatile (Cl, H2O, or S) to a volatile-free basis.')
         
         raw_concentration = getConcentration(element_name=element_name, lon=lon, lat=lat, normalize=False, quantity=quantity)
+        if raw_concentration < 0:
+            return get_nanval()
         
-        sum_volatile_concentration = 0
-        for volatile in __volatiles:
-            volatile_concentration = getConcentration(element_name=volatile, lon=lon, lat=lat, normalize=False, quantity=quantity)
-            if volatile_concentration < 0:
-                return get_nanval()
-            sum_volatile_concentration += volatile_concentration
 
-        return raw_concentration/(1-sum_volatile_concentration)
+        '''option 1/2: compute sum of volatiles by accessing/summing each volatile individually'''
+        # sum_volatile_concentration = 0
+        # for volatile in __volatiles:
+        #     volatile_concentration = getConcentration(element_name=volatile, lon=lon, lat=lat, normalize=False, quantity=quantity)
+        #     if volatile_concentration < 0:
+        #         return get_nanval()
+        #     sum_volatile_concentration += volatile_concentration
+        # return raw_concentration/(1-sum_volatile_concentration)
     
+
+        '''option 2/2: compute sum of volatiles by accessing pre-computed sum of volatiles, noticeably faster. pre-computing is done in section "initialize (run upon import)". '''
+        sum_volatile_concentration = getConcentration(element_name='cl+h2o+s', lon=lon, lat=lat, normalize=False, quantity=quantity)
+        val = raw_concentration/(1-sum_volatile_concentration)
+        return val if val >= 0 else get_nanval()
+
+    
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -406,7 +439,7 @@ def visualize(element_name: str, normalize=False, quantity='concentration',
     """
     DESCRIPTION:
     ------------
-        Make a plot of the surface concentration of an element.
+        Create a map of concentration/sigma for some element.
     
     PARAMETERS:
     ------------
@@ -420,6 +453,10 @@ def visualize(element_name: str, normalize=False, quantity='concentration',
             Bounding box for visualization. Longitude in range [-180, 180], latitude in range [-87.5, 87.5].
         grid_spacing : float (default 5 degrees)
             Spacing between "pixels" in degrees. Note that original data is 5x5 degree bins, so anything smaller than that will be interpolated. Also note that smaller resolutions will take longer to plot.
+
+    NOTES:
+    ------------
+        The default arguments for `lon_bounds`, `lat_bounds`, and `grid_spacing` will display the original 5x5 bins from the data.
                 
     """
 
@@ -454,7 +491,8 @@ def visualize(element_name: str, normalize=False, quantity='concentration',
 
     '''apply mask'''
     dat = np.asarray(dat)
-    dat = np.ma.masked_where((dat < 0), dat)
+    # dat = np.ma.masked_where((dat < 0), dat)
+    dat = np.ma.masked_where((dat == get_nanval()), dat)
 
     '''primary plot'''
     fig = plt.figure(figsize=(10,7))
