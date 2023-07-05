@@ -164,83 +164,83 @@ def get_meta_dat() -> dict:
 
 
 '''download data (or access from cache) and load into `__meta_dat`'''
+def __load_data() -> None:
+    for element_name in __rawdata_registry:
 
-for element_name in __rawdata_registry:
+        '''load from pooch download/cache'''
+        filepath = pooch.retrieve(
+            url=__rawdata_registry[element_name]['link'],
+            known_hash=__rawdata_registry[element_name]['hash'],
+            path=pooch.os_cache('redplanet')
+        )
 
-    '''load from pooch download/cache'''
-    filepath = pooch.retrieve(
-        url=__rawdata_registry[element_name]['link'],
-        known_hash=__rawdata_registry[element_name]['hash'],
-        path=pooch.os_cache('redplanet')
-    )
-
-    '''initialize entry in `meta_dat`'''
-    __meta_dat[element_name] = {}
-
-
-    '''import data from files to np.ndarrays'''
-    dat = np.loadtxt(filepath, skiprows=1)  
-    dat = np.where(dat == 9999.999, get_nanval(), dat)
+        '''initialize entry in `meta_dat`'''
+        __meta_dat[element_name] = {}
 
 
-    """ ==> we hardcode these values because know the data is 5x5 degree grid
-    lat_range = utils.unique(dat[:, 0])
-    lon_range = utils.unique(dat[:, 1])
-
-    if len(np.unique(np.diff(lon_range).round(decimals=3))) != 1:
-        raise Exception('Longitude values are not evenly spaced. This is not supported by the interpolation model.')
-    if len(np.unique(np.diff(lat_range).round(decimals=3))) != 1:
-        raise Exception('Latitude values are not evenly spaced. This is not supported by the interpolation model.')
-
-    '''edge case (part 1/2): longitude is cyclical, but data is not, so we duplicate one extra column on each edge of data & lon_range'''
-    grid_spacing = np.unique(np.diff(lon_range).round(decimals=3))[0] # grid_spacing based on lon values, so it might be negative if lon is decreasing. but this is okay, it allows the lon cycling to work out.
-    meta_dat[element_name]['grid spacing [degrees]'] = abs(grid_spacing)
-    lon_range_cycled = np.array([lon_range[0]-grid_spacing, *lon_range, lon_range[-1]+grid_spacing]) # even if grid_spacing is negative, this will work out.
-    """
+        '''import data from files to np.ndarrays'''
+        dat = np.loadtxt(filepath, skiprows=1)  
+        dat = np.where(dat == 9999.999, get_nanval(), dat)
 
 
-    __data_names = ['concentration', 'sigma']
+        """ ==> we hardcode these values because know the data is 5x5 degree grid
+        lat_range = utils.unique(dat[:, 0])
+        lon_range = utils.unique(dat[:, 1])
 
-    for i in range(len(__data_names)):
-        this_data = dat[:, 2+i]
-        
-        '''reshape to 2D, transpose to get [lon,lat] indexing'''
-        this_data = this_data.reshape(__lat_range.shape[0], __lon_range.shape[0]).T
-        # for index (i,j), `i` is longitude from `lon_range[0]` to `lon_range[-1]`, `j` is latitude from `lat_range[0]` to `lat_range[-1]`
+        if len(np.unique(np.diff(lon_range).round(decimals=3))) != 1:
+            raise Exception('Longitude values are not evenly spaced. This is not supported by the interpolation model.')
+        if len(np.unique(np.diff(lat_range).round(decimals=3))) != 1:
+            raise Exception('Latitude values are not evenly spaced. This is not supported by the interpolation model.')
 
-
-        '''units/corrections'''
-        if element_name == 'th':
-            correction=0.000001 # correct ppm to concentration out of 1
-        else:
-            correction=0.01 # correct weight percent to concentration out of 1
-        this_data = np.where(this_data != get_nanval(), this_data*correction, this_data)
+        '''edge case (part 1/2): longitude is cyclical, but data is not, so we duplicate one extra column on each edge of data & lon_range'''
+        grid_spacing = np.unique(np.diff(lon_range).round(decimals=3))[0] # grid_spacing based on lon values, so it might be negative if lon is decreasing. but this is okay, it allows the lon cycling to work out.
+        meta_dat[element_name]['grid spacing [degrees]'] = abs(grid_spacing)
+        lon_range_cycled = np.array([lon_range[0]-grid_spacing, *lon_range, lon_range[-1]+grid_spacing]) # even if grid_spacing is negative, this will work out.
+        """
 
 
-        '''edge case (part 2/2): longitude is cyclical, but data is not, so we duplicate one extra column on each edge of data & lon_range'''
-        left_edge = this_data[0, :]
-        right_edge = this_data[-1, :]
-        this_data = np.array([right_edge, *this_data, left_edge])
+        data_names = ['concentration', 'sigma']
+
+        for i in range(len(data_names)):
+            this_data = dat[:, 2+i]
+            
+            '''reshape to 2D, transpose to get [lon,lat] indexing'''
+            this_data = this_data.reshape(__lat_range.shape[0], __lon_range.shape[0]).T
+            # for index (i,j), `i` is longitude from `lon_range[0]` to `lon_range[-1]`, `j` is latitude from `lat_range[0]` to `lat_range[-1]`
 
 
-        '''add to `meta_dat`'''
-        __meta_dat[element_name][__data_names[i]] = this_data
+            '''units/corrections'''
+            if element_name == 'th':
+                correction=0.000001 # correct ppm to concentration out of 1
+            else:
+                correction=0.01 # correct weight percent to concentration out of 1
+            this_data = np.where(this_data != get_nanval(), this_data*correction, this_data)
 
 
+            '''edge case (part 2/2): longitude is cyclical, but data is not, so we duplicate one extra column on each edge of data & lon_range'''
+            left_edge = this_data[0, :]
+            right_edge = this_data[-1, :]
+            this_data = np.array([right_edge, *this_data, left_edge])
 
 
-
-'''use this to pre-compute volatile concentration so we're accessing once instead of thrice. make appropriate changes in `getConcentration` as well. note that adding raw data into one grid and then doing bilinear interpolation is not different from doing bilinear interpolation individually and adding them up.'''
-__data_names = ['concentration', 'sigma']
-__meta_dat['cl+h2o+s'] = {}
-
-for data_name in __data_names:
-    __meta_dat['cl+h2o+s'][data_name] = __meta_dat['cl'][data_name] + __meta_dat['h2o'][data_name] + __meta_dat['s'][data_name]
-    __meta_dat['cl+h2o+s'][data_name] = np.where(__meta_dat['cl+h2o+s'][data_name] < 0, get_nanval(), __meta_dat['cl+h2o+s'][data_name])
+            '''add to `meta_dat`'''
+            __meta_dat[element_name][data_names[i]] = this_data
 
 
 
 
+
+    '''use this to pre-compute volatile concentration so we're accessing once instead of thrice. make appropriate changes in `getConcentration` as well. note that adding raw data into one grid and then doing bilinear interpolation is not different from doing bilinear interpolation individually and adding them up.'''
+    data_names = ['concentration', 'sigma']
+    __meta_dat['cl+h2o+s'] = {}
+
+    for data_name in data_names:
+        __meta_dat['cl+h2o+s'][data_name] = __meta_dat['cl'][data_name] + __meta_dat['h2o'][data_name] + __meta_dat['s'][data_name]
+        __meta_dat['cl+h2o+s'][data_name] = np.where(__meta_dat['cl+h2o+s'][data_name] < 0, get_nanval(), __meta_dat['cl+h2o+s'][data_name])
+
+
+
+__load_data()
 
 
 
