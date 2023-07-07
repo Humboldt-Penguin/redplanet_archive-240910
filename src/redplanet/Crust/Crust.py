@@ -51,8 +51,8 @@ import matplotlib.pyplot as plt
 # }
 # dict_RIM.update(dict([reversed(i) for i in dict_RIM.items()]))
 
-# def RIM_toInt(RIM_str: str) -> int:
-#     return dict_RIM[RIM_str]
+# def RIM_toInt(RIM: str) -> int:
+#     return dict_RIM[RIM]
 # def RIM_toStr(RIM_int: int) -> str:
 #     return dict_RIM[RIM_int]
 
@@ -68,8 +68,8 @@ current_model = {}
 Holds all information for the currently loaded crustal thickness model. Fields are:
     - (model parameters)
         - 'model_name'
-            - f'{RIM_str}-{insight_thickness}-{rho_south}-{rho_north}'
-                - 'RIM_str'
+            - f'{RIM}-{insight_thickness}-{rho_south}-{rho_north}'
+                - 'RIM'
                     - Reference interior model name (see `dict_RIM` for options)
                 - 'insight_thickness'
                     - Seismic thickness at InSight landing site [km]
@@ -96,7 +96,7 @@ Holds all information for the currently loaded crustal thickness model. Fields a
             - 2D np.ndarray of crustal thickness [km]
 '''
 def get_current_model() -> dict:
-    selected_keys = ['model_name', 'RIM_str', 'insight_thickness', 'rho_north', 'rho_south', 'grid_spacing', 'lmax']
+    selected_keys = ['model_name', 'RIM', 'insight_thickness', 'rho_north', 'rho_south', 'grid_spacing', 'lmax']
     return {key: value for key, value in current_model.items() if key in selected_keys}
     # return current_model
 
@@ -334,7 +334,7 @@ def load_model(
 
 
     '''save current model parameters'''
-    current_model['RIM_str'] = RIM
+    current_model['RIM'] = RIM
     current_model['insight_thickness'] = insight_thickness
     current_model['rho_north'] = rho_north
     current_model['rho_south'] = rho_south
@@ -506,7 +506,7 @@ def get(
     """
     DESCRIPTION:
     ------------
-        Get topography, moho elevation, crustal thickness, or crustal density at a specific coordinate. Units are km and kg/m^3.
+        Get topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), or crustal density ('density') at a specific coordinate. Units are km and kg/m^3.
     
         
     PARAMETERS:
@@ -639,7 +639,7 @@ def visualize(
     """
     DESCRIPTION:
     ------------
-        Create a map of topography, moho depth, crustal thickness, or crustal density.
+        Create a map of topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), or crustal density ('density'). Model name is formatted f'{Reference_Interior_Model}-{insight_thickness}-{rho_south}-{rho_north}'.
     
         
     PARAMETERS:
@@ -670,7 +670,7 @@ def visualize(
 
     match quantity:
         case 'rho' | 'density':
-            title = 'Crustal Density'
+            title = f'Crustal Density with Model {current_model["model_name"]}'
             cbar_title = 'Density [kg/m$^3$]'
             colormap = 'viridis_r' if colormap == '' else colormap
 

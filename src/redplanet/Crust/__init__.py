@@ -31,7 +31,7 @@ Get topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), o
             colormap=''
         ) -> None:
 
-Create a map of topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), or crustal density ('density').
+Create a map of topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), or crustal density ('density'). Model name is formatted f'{Reference_Interior_Model}-{insight_thickness}-{rho_south}-{rho_north}'.
 
 
 
