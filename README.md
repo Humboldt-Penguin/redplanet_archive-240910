@@ -1,3 +1,13 @@
+[Project README will eventually go here. Note: draw the reader in! See great package readmes like pooch.]
+
+
+
+&nbsp;
+
+---
+
+&nbsp;
+
 TODO:
 - documentation
     - `README.md`
@@ -19,4 +29,11 @@ TODO:
 &nbsp;
 
 ---
+
+&nbsp;
+
+Don't hesitate to reach out -- Zain Eris Kamal, \<[zain.eris.kamal@rutgers.edu](mailto:zain.eris.kamal@rutgers.edu)\>
+
 Acknowledgements: [docs/thanks.txt](docs/thanks.txt)
+
+Other work: [github.com/Humboldt-Penguin](https://github.com/Humboldt-Penguin)

@@ -10,13 +10,13 @@ For more information, call `help(GRS)` or directly view docstring in `GRS/__init
 
 ############################################################################################################################################
 
-# from redplanet import utils
+from redplanet import utils
 
 import pooch
 import numpy as np
 import matplotlib.pyplot as plt
 
-# import os
+import os
 # import inspect
 
 
@@ -61,79 +61,6 @@ We opt to hardcode these values in the case of GRS because it's static. It's not
 
 
 
-__rawdata_registry = {
-    'al': {
-        'hash': 'sha256:a5bc7cd78d8dcf9caa42b69a044b70d0d65bfff73c321bad6d501faa2d80fd64',
-        'link': 'https://digitalcommons.lsu.edu/cgi/viewcontent.cgi?filename=9&article=1000&context=geo_psl&type=additional',
-    },
-    'ca': {
-        'hash': 'sha256:b8b94cee7bd66a9592c1b22d4a454848f884e38c9df211ebaebbd657784de2bb',
-        'link': 'https://digitalcommons.lsu.edu/cgi/viewcontent.cgi?filename=10&article=1000&context=geo_psl&type=additional',
-    },
-    'cl': {
-        'hash': 'sha256:c1d09c28c43a2881cdf586a5256dcf6717939d384426307801145b2a8a104dcd',
-        'link': 'https://digitalcommons.lsu.edu/cgi/viewcontent.cgi?filename=11&article=1000&context=geo_psl&type=additional',
-    },
-    'fe': {
-        'hash': 'sha256:735ffe97802e75eadaa1e82f2bcd836d1d2a6974dbac16ec83b242ec98b3033f',
-        'link': 'https://digitalcommons.lsu.edu/cgi/viewcontent.cgi?filename=12&article=1000&context=geo_psl&type=additional',
-    },
-    'h2o': {
-        'hash': 'sha256:2af6271b0718049c861531346e976feeab93ad487b15ad5eff5e268128d2167c',
-        'link': 'https://digitalcommons.lsu.edu/cgi/viewcontent.cgi?filename=13&article=1000&context=geo_psl&type=additional',
-    },
-    'k': {
-        'hash': 'sha256:0b03d23761a4ad490b5d1082389e8aaacdd5c904fef5e0d5031a9d9c2c2a63d6',
-        'link': 'https://digitalcommons.lsu.edu/cgi/viewcontent.cgi?filename=14&article=1000&context=geo_psl&type=additional',
-    },
-    'si': {
-        'hash': 'sha256:65069e80bd80fddca89eade1b9c514348eebbf768e6d789e2ea932ec642a1575',
-        'link': 'https://digitalcommons.lsu.edu/cgi/viewcontent.cgi?filename=16&article=1000&context=geo_psl&type=additional',
-    },
-    's': {
-        'hash': 'sha256:6f70b4aa6f2eee604aec45f40eb5ccb21c2e320bc4830bdc7060205e769beaff',
-        'link': 'https://digitalcommons.lsu.edu/cgi/viewcontent.cgi?filename=15&article=1000&context=geo_psl&type=additional',
-    },
-    'th': {
-        'hash': 'sha256:37289ccd5b6819b2fba6b53d4604cc17875ffe73cbc60fd965e65af1747fdd65',
-        'link': 'https://digitalcommons.lsu.edu/cgi/viewcontent.cgi?filename=17&article=1000&context=geo_psl&type=additional',
-    },
-}
-
-'''
-We download data directly from the source (more information on the source `__init__.py` docstring). 
-
-Downloads are executed through the `pooch` package, which ensures that the data is downloaded only once and then cached locally. This requires both the download link and hash of the file (to verify integrity / alert to modifications), which are pre-computed and stored in `rawdata_registry`. 
-
-A convenient script to generate this dictionary:
-    import os
-    rawdata_registry = {}
-    names = ['Al','Ca','Cl','Fe','H2O','K','S','Si','Th']
-    folder = r'C:/Users/Eris/Downloads/redplanet-data/GRS/1_raw'
-    for file in os.listdir(folder):
-        if 'README' in file: continue
-        element_name = file[:file.index('_')]
-        hash = pooch.file_hash(fname=os.path.join(folder, file), alg='sha256')
-        hash = f'sha256:{hash}'
-        i = names.index(element_name) + 9
-        link = f'https://digitalcommons.lsu.edu/cgi/viewcontent.cgi?filename={i}&article=1000&context=geo_psl&type=additional'
-        rawdata_registry[element_name.lower()] = {'hash': hash, 'link': link}
-    from redplanet import utils
-    utils.print_dict(rawdata_registry, format_pastable=True)
-
-Backup of data is available here: https://drive.google.com/drive/folders/1ACdjD-4JaZjPEe-Zi0raghn_yxdabA0A?usp=sharing. You will know if the original source data was modified if you get an error about hashes not matching.
-'''
-
-
-
-
-
-
-
-
-
-
-
 __meta_dat: dict = {}
 '''
 `meta_dat` is formatted as `meta_dat[element_name][quantity]`, where
@@ -144,6 +71,7 @@ __meta_dat: dict = {}
 
 Calling `meta_dat` as such returns a 2D numpy array containing the original dataset where all units are in concentration out of one (i.e. original wt% * 0.01 or ppm * 0.000001). For some index [i,j], `i` is longitude from `__lon_range[0]` to `__lon_range[-1]`, and `j` is latitude from `__lat_range[0]` to `__lat_range[-1]`.
 '''
+
 
 def get_meta_dat() -> dict:
     return __meta_dat
@@ -164,15 +92,45 @@ def get_meta_dat() -> dict:
 
 
 '''download data (or access from cache) and load into `__meta_dat`'''
-def __load_data() -> None:
-    for element_name in __rawdata_registry:
+def __init() -> None:
+    """
+    DESCRIPTION:
+    ------------
+        Download data (or load from cache) and format into usable dictionary `__meta_dat`.
+    
+    REFERENCES:
+    ------------
+        2022_Mars_Odyssey_GRS_Element_Concentration_Maps:
+            > Rani, A., Basu Sarbadhikari, A., Hood, D. R., Gasnault, O., Nambiar, S., & Karunatillake, S. (2022). 2001 Mars Odyssey Gamma Ray Spectrometer Element Concentration Maps. https://doi.org/https://doi.org/10.1029/2022GL099235
+            - Data downloaded from https://digitalcommons.lsu.edu/geo_psl/1/
+            - Data reuploaded to https://drive.google.com/file/d/1Z5Esv-Y4JAQvC84U-VataKJHIJ9OA4_8/view?usp=sharing for significantly increased downloading speeds
 
-        '''load from pooch download/cache'''
-        filepath = pooch.retrieve(
-            url=__rawdata_registry[element_name]['link'],
-            known_hash=__rawdata_registry[element_name]['hash'],
-            path=pooch.os_cache('redplanet')
-        )
+    """
+
+    '''load from pooch download/cache -- turn off the logger so we don't get unnecessary output every time a file is downloaded for the first time'''
+    logger = pooch.get_logger()
+    logger.disabled = True
+
+    filepaths = pooch.retrieve(
+        fname='2022_Mars_Odyssey_GRS_Element_Concentration_Maps.zip',
+        url=r'https://drive.google.com/file/d/1Z5Esv-Y4JAQvC84U-VataKJHIJ9OA4_8/view?usp=sharing',
+        known_hash='sha256:45e047a645ae8d1bbd8e43062adab16a22786786ecb17d8e44bfc95f471ff9b7',
+        path=pooch.os_cache('redplanet'),
+        downloader=utils.download_gdrive_file,
+        processor=pooch.Unzip(),
+    )
+    
+    logger.disabled = False
+    
+
+
+    for filepath in filepaths:
+
+        filename = os.path.basename(filepath)
+        if 'README' in filename: continue
+
+        element_name = filename.split('_')[0].lower()
+    
 
         '''initialize entry in `meta_dat`'''
         __meta_dat[element_name] = {}
@@ -230,20 +188,13 @@ def __load_data() -> None:
 
 
 
-    '''use this to pre-compute volatile concentration so we're accessing once instead of thrice. make appropriate changes in `getConcentration` as well. note that adding raw data into one grid and then doing bilinear interpolation is not different from doing bilinear interpolation individually and adding them up.'''
+    '''use this to pre-compute volatile concentration so we're accessing once instead of thrice. make appropriate changes in `get` as well. note that adding raw data into one grid and then doing bilinear interpolation is not different from doing bilinear interpolation individually and adding them up.'''
     data_names = ['concentration', 'sigma']
     __meta_dat['cl+h2o+s'] = {}
 
     for data_name in data_names:
         __meta_dat['cl+h2o+s'][data_name] = __meta_dat['cl'][data_name] + __meta_dat['h2o'][data_name] + __meta_dat['s'][data_name]
         __meta_dat['cl+h2o+s'][data_name] = np.where(__meta_dat['cl+h2o+s'][data_name] < 0, get_nanval(), __meta_dat['cl+h2o+s'][data_name])
-
-
-
-__load_data()
-
-
-
 
 
 
@@ -259,36 +210,52 @@ __load_data()
 
 
 
-def __checkCoords(lon: float, lat: float) -> None:
+def __checkCoords(
+    lon: float, 
+    lat: float
+):
+
     if not (-180 <= lon <= 180):
         raise ValueError(f'Longitude {lon} is not in range [-180, 180].')
-    if not(-87.5 <= lat <= 87.5):
+    if not (-87.5 <= lat <= 87.5):
         raise ValueError(f'Latitude {lat} is not in range [-87.5, 87.5].')
 
 
 
 
-def getConcentration(element_name: str, lon: float, lat: float, normalize=False, quantity='concentration') -> float:
+def get(
+    element_name: str, 
+    lon: float, 
+    lat: float, 
+    normalize=False, 
+    quantity='concentration'
+) -> float:
     """
     DESCRIPTION:
     ------------
         Get GRS-derived concentration/sigma of an element at a desired coordinate.
     
+        
     PARAMETERS:
     ------------
         element_name : str
             Element for which you want to make a global concentration map. Options are ['al','ca','cl','fe','h2o','k','si','s','th']. Casing does not matter.
+        
         lon : float
             Longitude in range [-180, 180] (lon=0 cuts through Arabia Terra).
+        
         lat : float
             Latitude in range [-87.5, 87.5].
+        
         normalize : bool (default False)
             If True, normalize to a volatile-free (Cl, H2O, S) basis.
                 > "For such measurement [from GRS] to represent the bulk chemistry of the martian upper crust, it must be normalized to a volatile-free basis (22). That equates to a 7 to 14% increase in the K, Th, and U abundances (22), which we applied to the chemical maps by renormalizing to Cl, stoichiometric H2O, and S-free basis."
                 Source: "Groundwater production from geothermal heating on early Mars and implication for early martian habitability", Ojha et al. 2020, https://www.science.org/doi/10.1126/sciadv.abb1669
+        
         quantity : str (default 'concentration')
             Quantity to plot. Options are ['concentration', 'sigma'].
 
+            
     RETURN:
     ------------
         float
@@ -296,6 +263,7 @@ def getConcentration(element_name: str, lon: float, lat: float, normalize=False,
                 - Units are in concentration out of one (i.e. original wt% * 0.01 or ppm * 0.000001)
                 - If a nearby "pixel" (original 5x5 bin) is unresolved by GRS, just return the nanval.
 
+                
     NOTES:
     ------------
         Our approaches to this computation have been, in order: sloppy manual calculation -> scipy.interpolate.RegularGridInterpolator -> optimized manual calculation (current). Relative to the current approach, the first approach is 2-3x slower (expected due to obvious optimizations), and the second approach is ~10x slower (unexpected, this seems to be a known bug with scipy). See more discussion here: https://stackoverflow.com/questions/75427538/regulargridinterpolator-excruciatingly-slower-than-interp2d/76566214#76566214.
@@ -394,7 +362,7 @@ def getConcentration(element_name: str, lon: float, lat: float, normalize=False,
         if element_name in __volatiles:
             raise Exception('Cannot normalize a volatile (Cl, H2O, or S) to a volatile-free basis.')
         
-        raw_concentration = getConcentration(element_name=element_name, lon=lon, lat=lat, normalize=False, quantity=quantity)
+        raw_concentration = get(element_name=element_name, lon=lon, lat=lat, normalize=False, quantity=quantity)
         if raw_concentration < 0:
             return get_nanval()
         
@@ -402,7 +370,7 @@ def getConcentration(element_name: str, lon: float, lat: float, normalize=False,
         '''option 1/2: compute sum of volatiles by accessing/summing each volatile individually'''
         # sum_volatile_concentration = 0
         # for volatile in __volatiles:
-        #     volatile_concentration = getConcentration(element_name=volatile, lon=lon, lat=lat, normalize=False, quantity=quantity)
+        #     volatile_concentration = get(element_name=volatile, lon=lon, lat=lat, normalize=False, quantity=quantity)
         #     if volatile_concentration < 0:
         #         return get_nanval()
         #     sum_volatile_concentration += volatile_concentration
@@ -410,7 +378,7 @@ def getConcentration(element_name: str, lon: float, lat: float, normalize=False,
     
 
         '''option 2/2: compute sum of volatiles by accessing pre-computed sum of volatiles, noticeably faster. pre-computing is done in section "initialize (run upon import)". '''
-        sum_volatile_concentration = getConcentration(element_name='cl+h2o+s', lon=lon, lat=lat, normalize=False, quantity=quantity)
+        sum_volatile_concentration = get(element_name='cl+h2o+s', lon=lon, lat=lat, normalize=False, quantity=quantity)
         val = raw_concentration/(1-sum_volatile_concentration)
         return val if val >= 0 else get_nanval()
 
@@ -432,27 +400,41 @@ def getConcentration(element_name: str, lon: float, lat: float, normalize=False,
 
 
 
-def visualize(element_name: str, normalize=False, quantity='concentration', 
-              lon_bounds: tuple = (-180,180), #lon_left: float = -180, lon_right: float = 180, 
-              lat_bounds: tuple = (-75,75), #lat_bottom: float = -75, lat_top: float = 75, 
-              grid_spacing: float = 5) -> None:
+def visualize(
+    element_name: str, 
+    normalize=False, 
+    quantity='concentration', 
+    lon_bounds: tuple = (-180,180), 
+    lat_bounds: tuple = (-75,75), 
+    grid_spacing: float = 5,
+    colormap='jet'
+):
     """
     DESCRIPTION:
     ------------
         Create a map of concentration/sigma for some element.
     
+
     PARAMETERS:
     ------------
         element_name : str
             Element for which you want to make a global concentration map. Options are ['al','ca','cl','fe','h2o','k','si','s','th']. Casing does not matter.
+        
         normalize : bool (default False)
-            If True, normalize to a volatile-free (Cl, H2O, S) basis. See `getConcentration` docstring for more details.
+            If True, normalize to a volatile-free (Cl, H2O, S) basis. See `get` docstring for more details.
+        
         quantity : str (default 'concentration')
             Quantity to plot. Options are ['concentration', 'sigma'].
+        
         lon_bounds, lat_bounds : tuple(2 floats) (default entire map)
             Bounding box for visualization. Longitude in range [-180, 180], latitude in range [-87.5, 87.5].
+        
         grid_spacing : float (default 5 degrees)
             Spacing between "pixels" in degrees. Note that original data is 5x5 degree bins, so anything smaller than that will be interpolated. Also note that smaller resolutions will take longer to plot.
+        
+        colormap : str (default 'jet')
+            Colormap to use. See https://matplotlib.org/stable/tutorials/colors/colormaps.html for options.
+
 
     NOTES:
     ------------
@@ -468,26 +450,21 @@ def visualize(element_name: str, normalize=False, quantity='concentration',
     __checkCoords(lon_right, lat_bottom)
     __checkCoords(lon_right, lat_top)
 
-    # import time
-    # iterations = 10
-    # t0 = time.time()
-    # for i in range(iterations):
 
-    ### If adapting visualization function, modify this function
+
+    '''
+    *** If adapting visualization function, modify this function ***
+    '''
     def plotThis(lon, lat):
-        val = getConcentration(element_name=element_name, lon=lon, lat=lat, normalize=normalize, quantity=quantity)
+        val = get(element_name=element_name, lon=lon, lat=lat, normalize=normalize, quantity=quantity)
         return val
+
 
 
     dat = [[
         plotThis(lon,lat)
         for lon in np.arange(lon_left, lon_right, grid_spacing)]
         for lat in np.arange(lat_bottom, lat_top, grid_spacing)]
-
-    # t1 = time.time()
-    # total1 = (t1-t0)/iterations
-    # print(f'Time elapsed: {total1} seconds.')
-    # print(f'speed changed by factor of {total2/total1}')
 
     '''apply mask'''
     dat = np.asarray(dat)
@@ -497,7 +474,7 @@ def visualize(element_name: str, normalize=False, quantity='concentration',
     '''primary plot'''
     fig = plt.figure(figsize=(10,7))
     ax = plt.axes()
-    im = ax.imshow(dat[::-1], cmap='jet', extent=[lon_left, lon_right, lat_bottom, lat_top])
+    im = ax.imshow(dat[::-1], cmap=colormap, extent=[lon_left, lon_right, lat_bottom, lat_top])
 
 
 
@@ -555,3 +532,9 @@ def visualize(element_name: str, normalize=False, quantity='concentration',
     cbar.set_label(f'{chem_cased(element_name)} {quantity.capitalize()} [out of 1]', y=0.5)
 
     plt.show()
+
+
+
+
+############################################################################################################################################
+__init()

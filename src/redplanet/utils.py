@@ -1,6 +1,9 @@
 import os
 
+import gdown
+
 import numpy as np
+
 
 
 # '''
@@ -30,6 +33,11 @@ def getPath(*args):
 
 
 
+def download_gdrive_file(url, output_file, pooch):
+    '''Helper for `pooch.retrieve` to allow for downloading from Google Drive.'''
+    gdown.download(url, output_file, quiet=True, fuzzy=True)
+
+
 
 
 # '''
@@ -50,14 +58,14 @@ def getPath(*args):
 #     return lon % 360
 
 
-# def clon2lon(clon: float) -> float:
-#     """
-#     Converts cyclical longitude (aka colongitude) in range [0,360] to longitude in range [0,180]U[-180,0].
+def clon2lon(clon: float) -> float:
+    """
+    Converts cyclical longitude (aka colongitude) in range [0,360] to longitude in range [0,180]U[-180,0].
 
-#     Using longitude [-180,180] puts Arabia Terra in the middle.
-#     Using cyclical longitude [0,360] puts Olympus Mons in the middle.
-#     """
-#     return ((clon-180) % 360) - 180
+    Using longitude [-180,180] puts Arabia Terra in the middle.
+    Using cyclical longitude [0,360] puts Olympus Mons in the middle.
+    """
+    return ((clon-180) % 360) - 180
 
 
 # def lat2cola(lat: float) -> float:
@@ -120,11 +128,11 @@ def print_dict(d: dict, indent=0, format_pastable=False) -> None:
 
 
 
-# def find_nth_substring(haystack, needle, n):
-#     parts= haystack.split(needle, n+1)
-#     if len(parts)<=n+1:
-#         return -1
-#     return len(haystack)-len(parts[-1])-len(needle)
+def indexOf(haystack, needle, n=0):
+    parts = haystack.split(needle, n+1)
+    if len(parts)<=n+1:
+        return -1
+    return len(haystack)-len(parts[-1])-len(needle)
 
 
 # def get_key_by_value(dictionary, value):

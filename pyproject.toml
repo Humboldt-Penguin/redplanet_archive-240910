@@ -1,4 +1,4 @@
-# This project minimal configuration contained entirely within a sigle `pyproject.toml`. We lose out on some richer features, but it works.
+# This project has minimal configuration contained entirely within a sigle `pyproject.toml`. We lose out on some richer features, but it works.
 
 # Writing good config files (pyproject.toml, setup.py, setup.cfg) is difficult. There are a few different standards, and understanding the details of differences/advantages/disadvantages is more trouble than it's worth. If you'd like to do your own research, see the resources below, but prepare to reread documentation many times as you eventually figure out the not-so-well-communicated intricacies.
 # Helpful resources:
@@ -27,7 +27,7 @@ build-backend = "setuptools.build_meta"
 [project]
 
 name = "redplanet" 
-version = "2023.06.28.dev1" 
+version = "1.0.0" 
 
 description = "User-friendly access (i.e. APIs) for various Mars data and derived quantities at arbitrary coordinates." 
 readme = "README.md"
@@ -47,12 +47,12 @@ license = {file = "LICENSE.txt"}
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 dependencies = [ # Optional
   "pooch",
+  "gdown",
   "pyshtools",
   "numpy",
   "matplotlib",
-  "scipy",
-  "gdown",
-  "pandas",
+  # "scipy",
+  # "pandas",
 ]
 
 

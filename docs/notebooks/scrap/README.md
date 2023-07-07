@@ -1,6 +1,6 @@
-`notebooks/generate_data/README.md`
+`notebooks/scrap/README.md`
 
-The purpose of this folder is to show how `redplanet`'s datasets are generated. This for the sake of:
+Help with
 
 - Transparency and reproducibility. 
 - Allowing users to adapt this code for their own purposes. 
