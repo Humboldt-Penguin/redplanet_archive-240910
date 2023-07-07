@@ -27,6 +27,10 @@ import os
 
 
 
+datapath = utils.getPath(pooch.os_cache('redplanet'), 'GRS')
+'''
+Path where pooch downloads/caches data.
+'''
 
 
 
@@ -115,7 +119,7 @@ def __init() -> None:
         fname='2022_Mars_Odyssey_GRS_Element_Concentration_Maps.zip',
         url=r'https://drive.google.com/file/d/1Z5Esv-Y4JAQvC84U-VataKJHIJ9OA4_8/view?usp=sharing',
         known_hash='sha256:45e047a645ae8d1bbd8e43062adab16a22786786ecb17d8e44bfc95f471ff9b7',
-        path=pooch.os_cache('redplanet'),
+        path=datapath,
         downloader=utils.download_gdrive_file,
         processor=pooch.Unzip(),
     )

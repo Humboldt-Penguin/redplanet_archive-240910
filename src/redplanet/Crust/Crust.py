@@ -30,6 +30,13 @@ import matplotlib.pyplot as plt
 
 
 
+datapath = utils.getPath(pooch.os_cache('redplanet'), 'Crust')
+'''
+Path where pooch downloads/caches data.
+'''
+
+
+
 
 # dict_RIM = {
 #     0: "DWThot",
@@ -144,7 +151,7 @@ def __init():
         fname='dichotomy_coordinates-JAH-0-360.txt',
         url=r'https://drive.google.com/file/d/17exPNRMKXGwa3daTEBN02llfdya6OZJY/view?usp=sharing',
         known_hash='sha256:42f2b9f32c9e9100ef4a9977171a54654c3bf25602555945405a93ca45ac6bb2',
-        path=pooch.os_cache('redplanet'),
+        path=datapath,
         downloader=utils.download_gdrive_file,
     )
 
@@ -216,7 +223,7 @@ def load_topo(grid_spacing=0.1):
         fname='MarsTopo2600.shape.gz',
         url=r'https://drive.google.com/file/d/1so3sGXNzdYkTdpzjvOxwYBsvr1Y1lwXt/view?usp=sharing',
         known_hash='sha256:8882a9ee7ee405d971b752028409f69bd934ba5411f1c64eaacd149e3b8642af',
-        path=pooch.os_cache('redplanet'),
+        path=datapath,
         downloader=utils.download_gdrive_file,
     )
     topo = pysh.SHCoeffs.from_file(filepath, lmax=lmax, name='MarsTopo2600', units='m', encoding='utf-8')
@@ -350,7 +357,7 @@ def load_model(
         fname='Crust_mohoSHcoeffs_rawdata_registry.json',
         url=r'https://drive.google.com/file/d/17JJuTFKkHh651-rt2J2eFKnxiki0w4ue/view?usp=sharing',
         known_hash='sha256:1800ee2883dc6bcc82bd34eb2eebced5b59fbe6c593cbc4e9122271fd01c1491',
-        path=pooch.os_cache('redplanet'), 
+        path=datapath, 
         downloader=utils.download_gdrive_file,
     )
 
@@ -374,7 +381,7 @@ def load_model(
         fname=f'{model_name}.txt',
         url=rawdata_registry[model_name]['link'], 
         known_hash=rawdata_registry[model_name]['hash'],
-        path=pooch.os_cache('redplanet'), 
+        path=utils.getPath(datapath, 'moho_SH_coeffs'), 
         downloader=utils.download_gdrive_file, 
     )
 
