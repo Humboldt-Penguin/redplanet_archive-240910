@@ -7,7 +7,7 @@ RedPlanet is a Python package that gives an easy way to work with various Mars d
 
 Install with `pip install redplanet`.
 
-## `GRS`
+## GRS
 
 Access/visualize chemical abundance maps derived from the 2001 Mars Odyssey Gamma Ray Spectrometer. The original data is defined in 5 degree bins, but this module allows you to programmatically estimate values at exact coordinates by interpolating between points. Concentrations can be extracted for both the shallow subsurface (raw data) and bulk crustal composition (normalized to volatile-free basis, i.e. zero H2O/Cl/Si).
 
@@ -16,7 +16,10 @@ Access/visualize chemical abundance maps derived from the 2001 Mars Odyssey Gamm
 - Example 1: Iron concentrations in Arabia Terra. Data is normalized to a volatile-free basis (H2O/Cl/Si free), so it is representative of the bulk crustal composition rather than shallow subsurface. 
 
 <p align="center">
-  <img width="600" src="docs/figures/GRS_fe_norm_ArabiaTerra.png">
+  <a href="https://files.catbox.moe/irjxsp.png">
+    <!-- <img width="600" src="docs/figures/GRS_fe_norm_ArabiaTerra.png"> -->
+    <img width="600" src="https://files.catbox.moe/irjxsp.png">
+  </a>
 </p>
 
 
@@ -38,7 +41,7 @@ GRS.visualize(
 
 ----
 
-## `Crust`
+## Crust
 
 
 Access/visualize maps of topography, Moho, crustal thickness, and crustal density from spherical harmonics. We offer ~22,000 models of the crust-mantle interface parameterized by reference interior models, crustal thickness at the InSight landing, and homogeneous/inhomogeneous crustal densities across the dichotomy. 
@@ -48,7 +51,10 @@ Access/visualize maps of topography, Moho, crustal thickness, and crustal densit
 - Example 1: Topography, Moho, and crustal thickness of the Valles Marineris region. Model parameters are 41 km crustal thickness at the InSight landing, 2,900 kg/m^3 crustal density in the North, and 2,700 kg/m^3 crustal density in the South.
 
 <p align="center">
-  <img src="docs/figures/Crust_various_VallesMarineris.png">
+  <a href="https://files.catbox.moe/tnk9io.png">
+    <!-- <img src="docs/figures/Crust_various_VallesMarineris.png"> -->
+    <img src="https://files.catbox.moe/tnk9io.png">
+  </a>
 </p>
 
 
@@ -68,11 +74,14 @@ Crust.visualize(quantity='thick', lon_bounds=lons, lat_bounds=lats, overlay=True
 - Example 2: Crustal thickness profile of Henry Crater with various crust-mantle interface models.
 
 <p align="center">
-  <img src="docs/figures/Crust_thick-profile_Henry.png">
+  <a href="https://files.catbox.moe/nnnm3l.png">
+    <!-- <img src="docs/figures/Crust_thick-profile_Henry.png"> -->
+    <img width="700" src="https://files.catbox.moe/nnnm3l.png">
+  </a>
 </p>
 
 
-Recreate with: See [docs/notebooks/demo/demo.ipynb](docs/notebooks/demo/demo.ipynb) section 2.2.
+Recreate with: See section 2.2 in [demo.ipynb](https://github.com/Humboldt-Penguin/redplanet/blob/main/docs/notebooks/demo/demo.ipynb).
 
 &nbsp;
 
@@ -80,15 +89,17 @@ Recreate with: See [docs/notebooks/demo/demo.ipynb](docs/notebooks/demo/demo.ipy
 
 # Documentation
 
-For a more in-depth tutorial in interactive notebook format, see [docs/notebooks/demo/demo.ipynb](docs/notebooks/demo/demo.ipynb).
+<!-- For a more in-depth tutorial in interactive notebook format, see [docs/notebooks/demo/demo.ipynb](docs/notebooks/demo/demo.ipynb). -->
+For a more in-depth tutorial in interactive notebook format, see [demo.ipynb](https://github.com/Humboldt-Penguin/redplanet/blob/main/docs/notebooks/demo/demo.ipynb).
 
+&nbsp;
 
 ---
 
 # Links
 
 - Don't hesitate to reach out: [zain.eris.kamal@rutgers.edu](mailto:zain.eris.kamal@rutgers.edu)
-- Acknowledgements: [docs/thanks.txt](docs/thanks.txt)
-- References: [docs/references.txt](docs/references.txt)
+- Acknowledgements: [docs/thanks.txt](https://github.com/Humboldt-Penguin/redplanet/blob/main/docs/thanks.txt)
+- References: [docs/references.txt](https://github.com/Humboldt-Penguin/redplanet/blob/main/docs/references.txt)
 - Other work: [github.com/Humboldt-Penguin](https://github.com/Humboldt-Penguin)
 

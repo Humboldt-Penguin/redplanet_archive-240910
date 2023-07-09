@@ -29,7 +29,7 @@ build-backend = "setuptools.build_meta"
 name = "redplanet" 
 version = "1.0.0" 
 
-description = "User-friendly access (i.e. APIs) for various Mars datasets and derived quantities. With straightforward methods and high customizability, you can either create publication-ready plots on the fly, or access the underlying data for more involved calculations." 
+description = "User-friendly access (i.e. APIs) for various Mars datasets and derived geophysics quantities. Create publication-ready plots on the fly or access the underlying data for more involved calculations." 
 readme = "README.md"
 
 authors = [{name = "Zain Eris Kamal", email = "zain.eris.kamal@rutgers.edu" }]
@@ -66,7 +66,7 @@ keywords = ["mars", "geophysics", "grs", "crust", "heat flow"]
 
 # For a list of valid classifiers, see https://pypi.org/classifiers/
 classifiers = [ 
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 5 - Production/Stable",
 
   "Operating System :: OS Independent",
 
