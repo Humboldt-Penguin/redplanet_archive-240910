@@ -20,7 +20,7 @@ METHODS:
             quantity='concentration'
         ) -> float:
 
-Get GRS-derived concentration/sigma of an element at a desired coordinate.
+Get GRS-derived concentration/sigma of an element at a desired coordinate. Options are: ['al','ca','cl','fe','h2o','k','si','s','th'].
 
 
 
@@ -29,26 +29,16 @@ Get GRS-derived concentration/sigma of an element at a desired coordinate.
             normalize=False, 
             quantity='concentration', 
             lon_bounds: tuple = (-180,180), 
-            lat_bounds: tuple = (-75,75), 
+            lat_bounds: tuple = (-60,60), 
             grid_spacing: float = 5,
-            colormap='jet'
+            colormap='viridis',
+            overlay=False,
+            transparency_data=0.6,
+            transparency_mola=0.9,
+            figsize=(10,7)
         ):
 
-Create a map of concentration/sigma for some element.
-
-
-
-###################################################################################
-------------
-USAGE:
-------------
-    >>> from redplanet import GRS
-    >>> help(GRS.visualize)
-    >>> GRS.visualize('th')
-    >>> GRS.visualize('th', quantity='sigma')
-    >>> GRS.visualize('th', normalize=True)
-    >>> GRS.visualize('th', normalize=True, lon_bounds=(-10,10), lat_bounds=(-10,10), grid_spacing=1)
-    >>> help(GRS.get)
+Create a map of concentration/sigma for some element. Options are: ['al','ca','cl','fe','h2o','k','si','s','th'].
 
     
 
@@ -63,7 +53,13 @@ REFERENCES:
     - Data downloaded from https://digitalcommons.lsu.edu/geo_psl/1/
     - Data reuploaded to https://drive.google.com/file/d/1Z5Esv-Y4JAQvC84U-VataKJHIJ9OA4_8/view?usp=sharing for significantly increased downloading speeds
 
-        
+    
+'Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif'
+    > Fergason, R.L, Hare, T.M., & Laura, J. (2017). HRSC and MOLA Blended Digital Elevation Model at 200m. Astrogeology PDS Annex, U.S. Geological Survey.
+    - Original download link: https://astrogeology.usgs.gov/search/map/Mars/Topography/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendShade_Global_200mp_v2
+    - The original file is 5 GB which is unnecessarily high resolution. We downsample the file by reducing the width/height by a factor of 7. Maps with other reduction factors as well as the code to do so can be found here: https://drive.google.com/drive/u/0/folders/1SuURWNQEX3xpawN6a-LEWIduoNjSVqAF.
+
+         
 """
 
 from .GRS import *

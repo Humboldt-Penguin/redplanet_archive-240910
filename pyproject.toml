@@ -29,7 +29,7 @@ build-backend = "setuptools.build_meta"
 name = "redplanet" 
 version = "1.0.0" 
 
-description = "User-friendly access (i.e. APIs) for various Mars data and derived quantities at arbitrary coordinates." 
+description = "User-friendly access (i.e. APIs) for various Mars datasets and derived quantities. With straightforward methods and high customizability, you can either create publication-ready plots on the fly, or access the underlying data for more involved calculations." 
 readme = "README.md"
 
 authors = [{name = "Zain Eris Kamal", email = "zain.eris.kamal@rutgers.edu" }]

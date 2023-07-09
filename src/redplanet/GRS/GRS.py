@@ -15,6 +15,7 @@ from redplanet import utils
 import pooch
 import numpy as np
 import matplotlib.pyplot as plt
+import PIL
 
 import os
 # import inspect
@@ -31,6 +32,15 @@ datapath = utils.getPath(pooch.os_cache('redplanet'), 'GRS')
 '''
 Path where pooch downloads/caches data.
 '''
+
+
+
+filepath_mola = ''
+'''
+Only try to download the mola map if the user calls `GRS.visualize()` with `overlay=True`.
+'''
+
+
 
 
 
@@ -409,9 +419,13 @@ def visualize(
     normalize=False, 
     quantity='concentration', 
     lon_bounds: tuple = (-180,180), 
-    lat_bounds: tuple = (-75,75), 
+    lat_bounds: tuple = (-60,60), 
     grid_spacing: float = 5,
-    colormap='jet'
+    colormap='viridis',
+    overlay=False,
+    transparency_data=0.6,
+    transparency_mola=0.9,
+    figsize=(10,7)
 ):
     """
     DESCRIPTION:
@@ -439,11 +453,31 @@ def visualize(
         colormap : str (default 'jet')
             Colormap to use. See https://matplotlib.org/stable/tutorials/colors/colormaps.html for options.
 
+        overlay : bool (default False)
+            If True, overlay a transparent MOLA map on top of the GRS map. Note that this will take longer to plot.
+
+        transparency_data : float (default 0.6)
+            If overlay=True, set transparency of the GRS data from 0 (transparent) to 1 (opaque).
+
+        transparency_mola : float (default 0.9)
+            If overlay=True, set transparency of the MOLA map from 0 (transparent) to 1 (opaque).
+
+        figsize : (float, float) (default (10,7))
+            Width, height in inches. 
+
 
     NOTES:
     ------------
         The default arguments for `lon_bounds`, `lat_bounds`, and `grid_spacing` will display the original 5x5 bins from the data.
-                
+
+
+    REFERENCES:
+    ------------
+        'Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif'
+            > Fergason, R.L, Hare, T.M., & Laura, J. (2017). HRSC and MOLA Blended Digital Elevation Model at 200m. Astrogeology PDS Annex, U.S. Geological Survey.
+            - Original download link: https://astrogeology.usgs.gov/search/map/Mars/Topography/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendShade_Global_200mp_v2
+            - The original file is 5 GB which is unnecessarily high resolution. We downsample the file by reducing the width/height by a factor of 7. Maps with other reduction factors as well as the code to do so can be found here: https://drive.google.com/drive/u/0/folders/1SuURWNQEX3xpawN6a-LEWIduoNjSVqAF.
+
     """
 
     lon_left, lon_right = lon_bounds
@@ -465,6 +499,7 @@ def visualize(
 
 
 
+    '''dataset to be plotted'''
     dat = [[
         plotThis(lon,lat)
         for lon in np.arange(lon_left, lon_right, grid_spacing)]
@@ -475,10 +510,54 @@ def visualize(
     # dat = np.ma.masked_where((dat < 0), dat)
     dat = np.ma.masked_where((dat == get_nanval()), dat)
 
-    '''primary plot'''
-    fig = plt.figure(figsize=(10,7))
+
+
+
+    '''plotting'''
+
+
+    fig = plt.figure(figsize=figsize)
     ax = plt.axes()
-    im = ax.imshow(dat[::-1], cmap=colormap, extent=[lon_left, lon_right, lat_bottom, lat_top])
+
+
+
+    '''mola overlay'''
+    if overlay:
+
+        global filepath_mola
+
+        if filepath_mola == '':
+            logger = pooch.get_logger()
+            logger.disabled = True
+            filepath_mola = pooch.retrieve(
+                fname='Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif',
+                url=r'https://drive.google.com/file/d/1i278DaeaFCtY19vREbE35OIm4aFRKXiB/view?usp=sharing',
+                known_hash='sha256:93d32f9b404b7eda1bb8b05caa989e55b219ac19a005d720800ecfe6e2b0bb6c',
+                path=utils.getPath(pooch.os_cache('redplanet'), 'Maps'),
+                downloader=utils.download_gdrive_file
+            )
+            logger.disabled = False
+
+        PIL.Image.MAX_IMAGE_PIXELS = 116159282 + 1 # get around PIL's "DecompressionBombError: Image size (-n- pixels) exceeds limit of 89478485 pixels, could be decompression bomb DOS attack." error
+
+        mola = PIL.Image.open(filepath_mola)
+
+        width, height = mola.size
+
+        left = ( (lon_left+180) / 360 ) * width
+        right = ( (lon_right+180) / 360 ) * width
+        top = ( (-lat_top+90) / 180 ) * height          # lat values are strange because PIL has (0,0) at the top left. don't think too hard about it, this works.
+        bottom = ( (-lat_bottom+90) / 180 ) * height
+
+        mola = mola.crop((left, top, right, bottom))
+
+        im_mola = ax.imshow(mola, cmap='gray', extent=[lon_left, lon_right, lat_bottom, lat_top], alpha=transparency_mola)
+
+        im_dat = ax.imshow(dat[::-1], cmap=colormap, extent=[lon_left, lon_right, lat_bottom, lat_top], alpha=transparency_data)
+    else:
+        im_dat = ax.imshow(dat[::-1], cmap=colormap, extent=[lon_left, lon_right, lat_bottom, lat_top])
+
+
 
 
 
@@ -532,7 +611,7 @@ def visualize(
 
     '''color bar'''
     cax = fig.add_axes([ax.get_position().x1+0.02,ax.get_position().y0,0.02,ax.get_position().height])
-    cbar = plt.colorbar(im, cax=cax)
+    cbar = plt.colorbar(im_dat, cax=cax)
     cbar.set_label(f'{chem_cased(element_name)} {quantity.capitalize()} [out of 1]', y=0.5)
 
     plt.show()

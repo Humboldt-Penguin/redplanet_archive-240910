@@ -19,7 +19,7 @@ METHODS:
             lat: float
         ) -> float:
 
-Get topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), or crustal density ('density') at a specific coordinate. Units are km and kg/m^3.
+Get topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), or crustal density ('rho'/'density') at a specific coordinate. Units are km and kg/m^3.
 
 
 
@@ -28,14 +28,18 @@ Get topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), o
             lon_bounds: tuple = (-180,180), 
             lat_bounds: tuple = (-90,90),  
             grid_spacing: float = 1,
-            colormap=''
-        ) -> None:
+            colormap='',
+            overlay=False,
+            transparency_data=0.6,
+            transparency_mola=0.9,
+            figsize=(10,7)
+        ):
 
-Create a map of topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), or crustal density ('density'). Model name is formatted f'{Reference_Interior_Model}-{insight_thickness}-{rho_south}-{rho_north}'.
+Create a map of topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), or crustal density ('rho'/'density'). Model name is formatted f'{Reference_Interior_Model}-{insight_thickness}-{rho_south}-{rho_north}'.
 
 
 
->>> Crust.get_current_model() -> dict:
+>>> Crust.get_current_model(include_data=False) -> dict:
 
 Get the current model parameters. Default is Khan2022-39-2900-2900 and grid spacing 0.1 degrees.
 
@@ -63,28 +67,15 @@ Loads a basic topography model. This is called automatically upon import, but ca
 
         
 
-###################################################################################
-------------
-USAGE:
-------------
-    >>> from redplanet import Crust
-    
-    >>> help(Crust.visualize)
-    
-    >>> Crust.visualize('topo')
-    >>> Crust.visualize('moho')
-    >>> Crust.visualize('thick')
-    >>> Crust.visualize('density')
-    
-    >>> Crust.visualize('topo', lon_bounds=(-100,-20), lat_bounds=(-60,40), grid_spacing=0.1)
-    
-    >>> Crust.get_current_model()
-    >>> Crust.visualize('thick')
-    >>> Crust.load_model('Khan2022', 39, 2900, 2700)
-    >>> Crust.visualize('thick')
+>>> Crust.get_model_name() -> str:
 
-    >>> help(Crust.get)
-    >>> Crust.get('thick', lon=39.23, lat=-20.12)
+Get the name of the current model formatted '{Reference_Interior_Model}-{insight_thickness}-{rho_south}-{rho_north}'.
+
+
+
+>>> Crust.peek_models():
+
+Print a summary of all available models.
 
 
 
@@ -113,6 +104,13 @@ Raw data (spherical harmonic coefficients for the crust-mantle interface, i.e. M
     - The process of converting this data into the pre-computed registry we use is explained here: https://gist.github.com/Humboldt-Penguin/6f3f6e7e375f68c1368d094b8fdb70f0
     - Original paper: 
         > Wieczorek, M. A., Broquet, A., McLennan, S. M., Rivoldini, A., Golombek, M., Antonangeli, D., et al. (2022). InSight constraints on the global character of the Martian crust. Journal of Geophysical Research: Planets, 127, e2022JE007298. https://doi.org/10.1029/2022JE007298
+
+        
+'Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif'
+    > Fergason, R.L, Hare, T.M., & Laura, J. (2017). HRSC and MOLA Blended Digital Elevation Model at 200m. Astrogeology PDS Annex, U.S. Geological Survey.
+    - Original download link: https://astrogeology.usgs.gov/search/map/Mars/Topography/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendShade_Global_200mp_v2
+    - The original file is 5 GB which is unnecessarily high resolution. We downsample the file by reducing the width/height by a factor of 7. Maps with other reduction factors as well as the code to do so can be found here: https://drive.google.com/drive/u/0/folders/1SuURWNQEX3xpawN6a-LEWIduoNjSVqAF.
+
 
 
 """

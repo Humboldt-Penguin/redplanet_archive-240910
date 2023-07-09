@@ -38,6 +38,15 @@ def preload(*args):
             downloader=utils.download_gdrive_file,
             processor=pooch.Unzip(),
         )
+
+
+        filepath = pooch.retrieve(
+            fname='Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif',
+            url=r'https://drive.google.com/file/d/1i278DaeaFCtY19vREbE35OIm4aFRKXiB/view?usp=sharing',
+            known_hash='sha256:93d32f9b404b7eda1bb8b05caa989e55b219ac19a005d720800ecfe6e2b0bb6c',
+            path=utils.getPath(pooch.os_cache('redplanet'), 'Maps'),
+            downloader=utils.download_gdrive_file
+        )
             
             
 
@@ -78,6 +87,15 @@ def preload(*args):
 
 
 
+        filepath = pooch.retrieve(
+            fname='Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif',
+            url=r'https://drive.google.com/file/d/1i278DaeaFCtY19vREbE35OIm4aFRKXiB/view?usp=sharing',
+            known_hash='sha256:93d32f9b404b7eda1bb8b05caa989e55b219ac19a005d720800ecfe6e2b0bb6c',
+            path=utils.getPath(pooch.os_cache('redplanet'), 'Maps'),
+            downloader=utils.download_gdrive_file
+        )
+
+
     ############################################################################################################################################
 
     # logger.disabled = False
@@ -104,7 +122,8 @@ def clear_cache(force=False):
     datapath = pooch.os_cache('redplanet')
 
     if os.path.exists(datapath):
-        if force or input(f'Are you sure you want to delete all files in {datapath}? (y/n) ') == 'y':
+        print(f'Are you sure you want to delete all files in {datapath}? (y/n) ')
+        if force or input() == 'y':
             print('Deleting files...')
             shutil.rmtree(datapath)
             print('Done.')

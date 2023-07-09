@@ -1,4 +1,5 @@
 import os
+import sys
 
 import gdown
 
@@ -133,6 +134,12 @@ def indexOf(haystack, needle, n=0):
     if len(parts)<=n+1:
         return -1
     return len(haystack)-len(parts[-1])-len(needle)
+
+
+
+def size(var):
+    variable_size = sys.getsizeof(var) / (1024 * 1024)  # Replace 'your_variable' with the variable you want to measure
+    print(f"Variable size: {variable_size} MB")
 
 
 # def get_key_by_value(dictionary, value):
