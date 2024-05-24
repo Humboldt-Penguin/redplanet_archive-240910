@@ -1,5 +1,5 @@
 # This project has minimal configuration contained entirely within a sigle `pyproject.toml`. We lose out on some richer features, but it works.
-
+# 
 # Writing good config files (pyproject.toml, setup.py, setup.cfg) is difficult. There are a few different standards, and understanding the details of differences/advantages/disadvantages is more trouble than it's worth. If you'd like to do your own research, see the resources below, but prepare to reread documentation many times as you eventually figure out the not-so-well-communicated intricacies.
 # Helpful resources:
 #   - PyPA (Python Packaging Authority)
@@ -34,7 +34,10 @@ readme = "README.md"
 
 authors = [{name = "Zain Eris Kamal", email = "zain.eris.kamal@rutgers.edu" }]
 
-requires-python = ">=3.7"
+requires-python = "<3.12"  
+# WARNING -- testing on other versions is very incomplete/limited, i've done most development on 3.11. feel free to try your luck <3
+# NOTE -- i keep catching errors if using python 3.12 and installing pyshtools, not sure why. this seems to fix it although you MUST explicitly make sure on your own that the python in your environment is <3.12 or it will silently fail! issue also mentioned here: https://stackoverflow.com/questions/77790237/installing-pyshtools-with-pip-modulenotfounderror-no-module-named-numpy-altho
+
 license = {file = "LICENSE.txt"}
 
 
@@ -46,13 +49,11 @@ license = {file = "LICENSE.txt"}
 # For an analysis of this field vs pip's requirements files see:
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 dependencies = [ # Optional
-  "pooch",
-  "gdown",
-  "pyshtools",
-  "numpy",
-  "matplotlib",
-  # "scipy",
-  # "pandas",
+  "pooch", "gdown", "xxhash", 
+  "numpy", "scipy", "pandas", 
+  "xarray", "rioxarray", "dask", "zarr", 
+  "pyshtools<4.11", 
+  # "matplotlib", "plotly", 
 ]
 
 
@@ -61,7 +62,12 @@ dependencies = [ # Optional
 
 
 
-keywords = ["mars", "geophysics", "grs", "crust", "heat flow"] 
+keywords = [
+  "mars", 
+  "remote sensing", "satellite", 
+  "geophysics", "geology", "planetary sciences", 
+  "grs", "crust", "topography", "heat flow"
+] 
 
 
 # For a list of valid classifiers, see https://pypi.org/classifiers/
@@ -101,9 +107,7 @@ classifiers = [
 
 #######################################################################
 [project.optional-dependencies]
-jupyter = ["jupyter"]
-jupyterlab = ["jupyterlab"]
-
+dev = ["plotly", "matplotlib", "jupyter"]
 
 
 

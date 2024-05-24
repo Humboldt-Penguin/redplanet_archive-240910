@@ -1,19 +1,27 @@
 # RedPlanet
 
-RedPlanet is a Python package that gives an easy way to work with various Mars datasets. With straightforward methods and high customizability, you can either create publication-ready plots on the fly, or access the underlying data for more involved calculations.
+RedPlanet makes it easy to work with various Mars datasets and derived quantities in Python. Key features include GRS chemical abundance maps, 22K+ moho/crustal thickness models, heat flow + geothermal gradient models, impact demagnetization calculators, MAVEN magnetometer tracks, and more.
+
+Create publication-ready plots on the fly, or access the underlying data for more involved calculations.
+
+[Get started with an interactive, web-based tutorial on Google Colab](https://drive.google.com/drive/folders/1UxBJzFugjNnjnxebbso7bYJ1cYgEZyzj?usp=sharing).
+
+[Development is ongoing. See [docs/changelog.md](https://github.com/Humboldt-Penguin/redplanet/blob/main/docs/changelog.md) for planned features.]
 
 
 # Usage:
 
-Install with `pip install redplanet`.
+Install with `pip install redplanet`. 
+
 
 ## GRS
 
-Access/visualize chemical abundance maps derived from the 2001 Mars Odyssey Gamma Ray Spectrometer. The original data is defined in 5 degree bins, but this module allows you to programmatically estimate values at exact coordinates by interpolating between points. Concentrations can be extracted for both the shallow subsurface (raw data) and bulk crustal composition (normalized to volatile-free basis, i.e. zero H2O/Cl/Si).
+Access/visualize chemical abundance maps derived from the 2001 Mars Odyssey Gamma Ray Spectrometer. More specifically, this is a July 2022 release of the data from [Rani et al.](https://doi.org/https://doi.org/10.1029/2022GL099235) who consolidated three key multivariate methods to create the first unified set of chemical provinces of Mars (including sulfur and aluminum). The data is defined in 5 degree bins, but this module allows you to estimate values at exact coordinates via interpolation. Concentrations can be extracted for both the shallow subsurface (raw data) and bulk crustal composition (normalized to volatile-free basis, i.e. no H2O/Cl/Si).
 
 &nbsp;
 
-- Example 1: Iron concentrations in Arabia Terra. Data is normalized to a volatile-free basis (H2O/Cl/Si free), so it is representative of the bulk crustal composition rather than shallow subsurface. 
+### Example 1: 
+Iron concentrations in Arabia Terra. Data is normalized to a volatile-free basis (H2O/Cl/Si free), so it is representative of the bulk crustal chemistry. 
 
 <p align="center">
   <a href="https://files.catbox.moe/irjxsp.png">
@@ -44,11 +52,12 @@ GRS.visualize(
 ## Crust
 
 
-Access/visualize maps of topography, Moho, crustal thickness, and crustal density from spherical harmonics. We offer ~22,000 models of the crust-mantle interface parameterized by reference interior models, crustal thickness at the InSight landing, and homogeneous/inhomogeneous crustal densities across the dichotomy. 
+Access/visualize high-resolution maps of topography, Moho, crustal thickness, and crustal density derived from spherical harmonics. We offer ~22,000 models of the crust-mantle interface from [Wieczorek 2022](https://doi.org/10.5281/zenodo.6477509) (for a summary of models, see [here](https://docs.google.com/spreadsheets/d/1ZDILcSPdbXAFp60VfyC4xTZzdnAVhx_U/edit?usp=sharing&ouid=107564547097010500390&rtpof=true&sd=true)) parameterized by reference interior models, crustal thickness at the InSight landing, and homogeneous/inhomogeneous crustal densities across the dichotomy. 
 
 &nbsp;
 
-- Example 1: Topography, Moho, and crustal thickness of the Valles Marineris region. Model parameters are 41 km crustal thickness at the InSight landing, 2,900 kg/m^3 crustal density in the North, and 2,700 kg/m^3 crustal density in the South.
+### Example 1: 
+Topography, Moho, and crustal thickness of outflow channels, Valles Marineris, and Argyre basin. Model parameters are 41 km crustal thickness at the InSight landing, 2,700 kg/m^3 crustal density in the South, and 2,900 kg/m^3 crustal density in the North.
 
 <p align="center">
   <a href="https://files.catbox.moe/tnk9io.png">
@@ -71,17 +80,18 @@ Crust.visualize(quantity='thick', lon_bounds=lons, lat_bounds=lats, overlay=True
 
 &nbsp;
 
-- Example 2: Crustal thickness profile of Henry Crater with various crust-mantle interface models.
+### Example 2: 
+Crustal thickness profile of Henry Crater with various crust-mantle interface models.
 
 <p align="center">
-  <a href="https://files.catbox.moe/nnnm3l.png">
+  <a href="https://files.catbox.moe/o10obo.png">
     <!-- <img src="docs/figures/Crust_thick-profile_Henry.png"> -->
-    <img width="700" src="https://files.catbox.moe/nnnm3l.png">
+    <img width="700" src="https://files.catbox.moe/o10obo.png">
   </a>
 </p>
 
 
-Recreate with: See section 2.2 in [demo.ipynb](https://github.com/Humboldt-Penguin/redplanet/blob/main/docs/notebooks/demo/demo.ipynb).
+Recreate with: See section 3.2 in [demo.ipynb](https://github.com/Humboldt-Penguin/redplanet/blob/main/docs/notebooks/demo/demo.ipynb).
 
 &nbsp;
 
@@ -90,7 +100,20 @@ Recreate with: See section 2.2 in [demo.ipynb](https://github.com/Humboldt-Pengu
 # Documentation
 
 <!-- For a more in-depth tutorial in interactive notebook format, see [docs/notebooks/demo/demo.ipynb](docs/notebooks/demo/demo.ipynb). -->
-For a more in-depth tutorial in interactive notebook format, see [demo.ipynb](https://github.com/Humboldt-Penguin/redplanet/blob/main/docs/notebooks/demo/demo.ipynb).
+<!-- For a more in-depth tutorial in interactive notebook format, see [redplanet_demo.ipynb](https://drive.google.com/drive/folders/1UxBJzFugjNnjnxebbso7bYJ1cYgEZyzj?usp=sharing). -->
+
+Call `help(module)` or `help(module.method)`. For example:
+
+```python
+import redplanet
+help(redplanet)
+help(redplanet.clear_cache)
+from redplanet import GRS
+help(GRS)
+help(GRS.visualize)
+```
+
+Or see the [interactive, web-based tutorial on Google Colab](https://drive.google.com/drive/folders/1UxBJzFugjNnjnxebbso7bYJ1cYgEZyzj?usp=sharing).
 
 &nbsp;
 
@@ -99,6 +122,8 @@ For a more in-depth tutorial in interactive notebook format, see [demo.ipynb](ht
 # Links
 
 - Don't hesitate to reach out: [zain.eris.kamal@rutgers.edu](mailto:zain.eris.kamal@rutgers.edu)
+- PyPI: [pypi.org/project/redplanet/](https://pypi.org/project/redplanet/)
+- Changelog + planned features: [docs/changelog.md](https://github.com/Humboldt-Penguin/redplanet/blob/main/docs/changelog.md)
 - Acknowledgements: [docs/thanks.txt](https://github.com/Humboldt-Penguin/redplanet/blob/main/docs/thanks.txt)
 - References: [docs/references.txt](https://github.com/Humboldt-Penguin/redplanet/blob/main/docs/references.txt)
 - Other work: [github.com/Humboldt-Penguin](https://github.com/Humboldt-Penguin)

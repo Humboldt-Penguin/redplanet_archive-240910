@@ -1,129 +1,121 @@
-def preload(*args):
-    """
-    DESCRIPTION:
-    ------------
-        Download large files in advance (usually done during module intitialization) and save to cache to speed up later loading. More information about each file downloaded found in respecting module, this is just a shortcut.
+"""
+RedPlanet is a Python package that gives an easy way to work with various Mars datasets. With straightforward methods and high customizability, you can either create publication-ready plots on the fly, or access the underlying data for more involved calculations.
+
+- Project repository: https://github.com/Humboldt-Penguin/redplanet
+- Interactive, web-based tutorial on Google Colab: https://drive.google.com/drive/folders/1UxBJzFugjNnjnxebbso7bYJ1cYgEZyzj?usp=sharing
+
+
+###################################################################################
+------------
+MODULES:
+------------
+- GRS
+    - Access and plot surface element concentrations derived from the 2001 Mar Odyssey Gamma Ray Spectrometer.
+- Crust
+    - Access and plot high-resolution data for topography, moho, crustal thickness, and crustal density derived from spherical harmonics.
+- Craters
+    - Access coordinates, names, and diameters of Martian craters greater than 10km diameter.
+
+
     
-    PARAMETERS:
-    ------------
-        args : list[str]
-            Choose options from ['GRS', 'Crust']. If empty, default to all.
+###################################################################################
+------------
+METHODS:
+------------
 
-    """
+>>> redplanet.preload(*args)
 
-    if len(args) == 0:
-        args = ['GRS', 'Crust']
+Download large files in advance (usually done during module intitialization) and save to cache to speed up later loading. More information about each file downloaded found in respecting module, this is just a shortcut.
 
 
-    from redplanet import utils
-    import pooch
 
-    # logger = pooch.get_logger()
-    # logger.disabled = True
+>>> redplanet.clear_cache(force=False)
+
+Clear the cache folder containing all files downloaded by redplanet. Max size will not exceed 1GB. If `force=True`, will not prompt with folder name and ask for confirmation.
 
 
 
 
-    ############################################################################################################################################
+###################################################################################
+------------
+QUICKSTART:
+------------
 
-    if 'GRS' in args:
-
-        datapath = utils.getPath(pooch.os_cache('redplanet'), 'GRS')
-
-        filepaths = pooch.retrieve(
-            fname='2022_Mars_Odyssey_GRS_Element_Concentration_Maps.zip',
-            url=r'https://drive.google.com/file/d/1Z5Esv-Y4JAQvC84U-VataKJHIJ9OA4_8/view?usp=sharing',
-            known_hash='sha256:45e047a645ae8d1bbd8e43062adab16a22786786ecb17d8e44bfc95f471ff9b7',
-            path=datapath,
-            downloader=utils.download_gdrive_file,
-            processor=pooch.Unzip(),
-        )
+To get started, run:
+>>> from redplanet import <module>
+>>> help(<module>)
 
 
-        filepath = pooch.retrieve(
-            fname='Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif',
-            url=r'https://drive.google.com/file/d/1i278DaeaFCtY19vREbE35OIm4aFRKXiB/view?usp=sharing',
-            known_hash='sha256:93d32f9b404b7eda1bb8b05caa989e55b219ac19a005d720800ecfe6e2b0bb6c',
-            path=utils.getPath(pooch.os_cache('redplanet'), 'Maps'),
-            downloader=utils.download_gdrive_file
-        )
-            
-            
+"""
 
 
 
-    ############################################################################################################################################
-
-    if 'Crust' in args:
-
-        datapath = utils.getPath(pooch.os_cache('redplanet'), 'Crust')
-
-        # high res topography model (sh coeff 2600)
-        filepath = pooch.retrieve(
-            fname='MarsTopo2600.shape.gz',
-            url=r'https://drive.google.com/file/d/1so3sGXNzdYkTdpzjvOxwYBsvr1Y1lwXt/view?usp=sharing',
-            known_hash='sha256:8882a9ee7ee405d971b752028409f69bd934ba5411f1c64eaacd149e3b8642af',
-            path=datapath,
-            downloader=utils.download_gdrive_file,
-        )
-
-        # raw data (moho sh coeffs) registry    
-        filepath = pooch.retrieve(
-            fname='Crust_mohoSHcoeffs_rawdata_registry.json',
-            url=r'https://drive.google.com/file/d/17JJuTFKkHh651-rt2J2eFKnxiki0w4ue/view?usp=sharing',
-            known_hash='sha256:1800ee2883dc6bcc82bd34eb2eebced5b59fbe6c593cbc4e9122271fd01c1491',
-            path=datapath, 
-            downloader=utils.download_gdrive_file,
-        )
-
-        # dichotomy coordinates
-        filepath = pooch.retrieve(
-            fname='dichotomy_coordinates-JAH-0-360.txt',
-            url=r'https://drive.google.com/file/d/17exPNRMKXGwa3daTEBN02llfdya6OZJY/view?usp=sharing',
-            known_hash='sha256:42f2b9f32c9e9100ef4a9977171a54654c3bf25602555945405a93ca45ac6bb2',
-            path=datapath,
-            downloader=utils.download_gdrive_file,
-        )
+def preload(datasets):
+    '''
+    TODO: 
+        rather than having to create/manage a decentralized `pooch` registry thing (lots of time/effort, AVOID AT ALL COSTS AND FOCUS ON IMPORTANT STUFF), it's much easier to import the modules and do some basic operations that will result in downloading the necessary files!!! MUCH easier.
+    '''
 
 
+    if datasets == 'all':
+        datasets = [
+            'GRS',
+            'Crust',
+            'Mag',
+            'Craters',
+        ]
 
-        filepath = pooch.retrieve(
-            fname='Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif',
-            url=r'https://drive.google.com/file/d/1i278DaeaFCtY19vREbE35OIm4aFRKXiB/view?usp=sharing',
-            known_hash='sha256:93d32f9b404b7eda1bb8b05caa989e55b219ac19a005d720800ecfe6e2b0bb6c',
-            path=utils.getPath(pooch.os_cache('redplanet'), 'Maps'),
-            downloader=utils.download_gdrive_file
-        )
 
+    if 'GRS' in datasets:
+        ...
+    if 'Crust' in datasets:
+        ...
+    if 'Mag' in datasets:
+        ...
+    if 'Craters' in datasets:
+        ...
+    
 
-    ############################################################################################################################################
-
-    # logger.disabled = False
+    return
 
 
 
 
+# def clear_cache(force=False):
+#     """
+#     DESCRIPTION:
+#     ------------
+#         Clear the cache folder containing all files downloaded by redplanet. Max size will not exceed 1GB. If `force=True`, will not prompt with folder name and ask for confirmation.
+
+#     """
+
+#     import pooch
+#     import os
+#     import shutil
+
+#     datapath = pooch.os_cache('redplanet')
+
+#     if os.path.exists(datapath):
+#         print(f'Are you sure you want to delete all files in {datapath}? (y/n) ')
+#         if force or input() == 'y':
+#             print('Deleting files...')
+#             shutil.rmtree(datapath)
+#             print('Done.')
 
 
 
 
-def clear_cache(force=False):
-    """
-    DESCRIPTION:
-    ------------
-        Clear the cache folder of all files downloaded by redplanet.
+# def cite():
+#     """
+#     DESCRIPTION:
+#     ------------
+#         Print out citation information for redplanet.
 
-    """
+#     """
 
-    import pooch
-    import os
-    import shutil
+#     print('Thank you for using redplanet! If you use this in your research, please cite:')
+#     print()
+#     print('Citation information coming soon!')
+#     # print()
+#     # print('Bibtex:')
 
-    datapath = pooch.os_cache('redplanet')
-
-    if os.path.exists(datapath):
-        print(f'Are you sure you want to delete all files in {datapath}? (y/n) ')
-        if force or input() == 'y':
-            print('Deleting files...')
-            shutil.rmtree(datapath)
-            print('Done.')

@@ -4,54 +4,24 @@ https://github.com/Humboldt-Penguin/redplanet
 
 For more information, call `help(GRS)` or directly view docstring in `GRS/__init__.py`.
 
+...
+
+TODO:
+    [ ] Finish writing/fleshing out docstrings. 
+    [ ] Add proper units + attributes + citations to xarray dataset. 
+    [ ] Write a `plot` function? Need to rewrite the corresponding `visualize` function in `redplanet.utils` first (rename to `plot` there as well). 
+
 """
 
 
-
-############################################################################################################################################
-
 from redplanet import utils
+
+from pathlib import Path
 
 import pooch
 import numpy as np
-import matplotlib.pyplot as plt
-import PIL
-
-import os
-# import inspect
-
-
-
-
-############################################################################################################################################
-""" module variables """
-
-
-
-datapath = utils.getPath(pooch.os_cache('redplanet'), 'GRS')
-'''
-Path where pooch downloads/caches data.
-'''
-
-
-
-filepath_mola = ''
-'''
-Only try to download the mola map if the user calls `GRS.visualize()` with `overlay=True`.
-'''
-
-
-
-
-
-__nanval: float = -1e10
-'''
-Value given to pixels where data is not defined (i.e. "NOT_APPLICABLE_CONSTANT"). In the data, this is 9999.999.
-We choose an extremely large negative value so we can easily filter/mask it when using the data or plotting. This errs on the side of caution.
-'''
-
-def get_nanval() -> float:
-    return __nanval
+import pandas as pd 
+import xarray as xr
 
 
 
@@ -60,35 +30,38 @@ def get_nanval() -> float:
 
 
 
-__grid_spacing = 5 # degrees
-__lat_range = np.arange(87.5, -87.5 *1.0001, -__grid_spacing)
-__lon_range = np.arange(177.5, -177.5 *1.0001, -__grid_spacing)
-__lon_range_cycled = np.arange(182.5, -182.5 *1.0001, -__grid_spacing)
-'''
-We opt to hardcode these values in the case of GRS because it's static. It's not hard to programmatically calculate these values in other cases -- the code for such is included but commented out below.
-'''
+## see `_initialize()`.
+_has_been_initialized = False
+
+## path where pooch downloads/caches data.
+dirpath_data_root = pooch.os_cache('redplanet')
+
+## holds GRS data in xarray or dictionary format.
+_dat_grs_xarr = None
+_dat_grs_dict = None
 
 
+def get_rawdata(how=None):
+    """
+    `format` options: ['xarray', 'dict']
 
-
-
-
-
-
-__meta_dat: dict = {}
-'''
-`meta_dat` is formatted as `meta_dat[element_name][quantity]`, where
-    - `element_name` is from ['al','ca','cl','fe','h2o','k','si','s','th']
-    - `quantity` is from:
-        - 'concentration' = Concentration of the element. 
-        - 'sigma' = The error associated with the concentration measurement. 
-
-Calling `meta_dat` as such returns a 2D numpy array containing the original dataset where all units are in concentration out of one (i.e. original wt% * 0.01 or ppm * 0.000001). For some index [i,j], `i` is longitude from `__lon_range[0]` to `__lon_range[-1]`, and `j` is latitude from `__lat_range[0]` to `__lat_range[-1]`.
-'''
-
-
-def get_meta_dat() -> dict:
-    return __meta_dat
+    Note: when viewing/exploring dictionaries, it may help to call:
+        ```
+        from redplanet import utils
+        utils.print_dict(dat_grs_dict)     # insert any dictionary here
+        ```
+    """
+    if how is None:
+        raise ValueError('Options are ["xarray", "dict"].')
+    
+    _initialize()
+    match how:
+        case 'xarray':
+            return _dat_grs_xarr
+        case 'dict':
+            return _dat_grs_dict
+        case _:
+            raise ValueError('Options are ["xarray", "dict"].')
 
 
 
@@ -98,305 +71,193 @@ def get_meta_dat() -> dict:
 
 
 
-############################################################################################################################################
-""" initialize (run upon import) """
 
-
-
-
-
-'''download data (or access from cache) and load into `__meta_dat`'''
-def __init() -> None:
+def _initialize():
     """
     DESCRIPTION:
     ------------
-        Download data (or load from cache) and format into usable dictionary `__meta_dat`.
+        Download data (or load from cache) and format into xarray `_dat_grs` and dictionary `_dat_grs_dict`.
     
     REFERENCES:
     ------------
         2022_Mars_Odyssey_GRS_Element_Concentration_Maps:
-            > Rani, A., Basu Sarbadhikari, A., Hood, D. R., Gasnault, O., Nambiar, S., & Karunatillake, S. (2022). 2001 Mars Odyssey Gamma Ray Spectrometer Element Concentration Maps. https://doi.org/https://doi.org/10.1029/2022GL099235
+            > Rani, A., Basu Sarbadhikari, A., Hood, D. R., Gasnault, O., Nambiar, S., & Karunatillake, S. (2022). 2001 Mars Odyssey Gamma Ray Spectrometer Element Concentration Maps. https://doi.org/10.1029/2022GL099235
             - Data downloaded from https://digitalcommons.lsu.edu/geo_psl/1/
-            - Data reuploaded to https://drive.google.com/file/d/1Z5Esv-Y4JAQvC84U-VataKJHIJ9OA4_8/view?usp=sharing for significantly increased downloading speeds
+            - Data mirrored to Google Drive for significantly increased downloading speeds
 
     """
 
-    '''load from pooch download/cache -- turn off the logger so we don't get unnecessary output every time a file is downloaded for the first time'''
-    logger = pooch.get_logger()
-    logger.disabled = True
 
-    filepaths = pooch.retrieve(
-        fname='2022_Mars_Odyssey_GRS_Element_Concentration_Maps.zip',
-        url=r'https://drive.google.com/file/d/1Z5Esv-Y4JAQvC84U-VataKJHIJ9OA4_8/view?usp=sharing',
-        known_hash='sha256:45e047a645ae8d1bbd8e43062adab16a22786786ecb17d8e44bfc95f471ff9b7',
-        path=datapath,
-        downloader=utils.download_gdrive_file,
-        processor=pooch.Unzip(),
-    )
+    '''lazy initialization uwu'''
     
-    logger.disabled = False
+    """NOTE: See 'Footnote 1' at bottom of `GRS.py` for self-note justifying `global` variables and modules over classes."""
     
-
-
-    for filepath in filepaths:
-
-        filename = os.path.basename(filepath)
-        if 'README' in filename: continue
-
-        element_name = filename.split('_')[0].lower()
+    global _has_been_initialized
+    if _has_been_initialized:
+        return
     
-
-        '''initialize entry in `meta_dat`'''
-        __meta_dat[element_name] = {}
-
-
-        '''import data from files to np.ndarrays'''
-        dat = np.loadtxt(filepath, skiprows=1)  
-        dat = np.where(dat == 9999.999, get_nanval(), dat)
-
-
-        """ ==> we hardcode these values because know the data is 5x5 degree grid
-        lat_range = utils.unique(dat[:, 0])
-        lon_range = utils.unique(dat[:, 1])
-
-        if len(np.unique(np.diff(lon_range).round(decimals=3))) != 1:
-            raise Exception('Longitude values are not evenly spaced. This is not supported by the interpolation model.')
-        if len(np.unique(np.diff(lat_range).round(decimals=3))) != 1:
-            raise Exception('Latitude values are not evenly spaced. This is not supported by the interpolation model.')
-
-        '''edge case (part 1/2): longitude is cyclical, but data is not, so we duplicate one extra column on each edge of data & lon_range'''
-        grid_spacing = np.unique(np.diff(lon_range).round(decimals=3))[0] # grid_spacing based on lon values, so it might be negative if lon is decreasing. but this is okay, it allows the lon cycling to work out.
-        meta_dat[element_name]['grid spacing [degrees]'] = abs(grid_spacing)
-        lon_range_cycled = np.array([lon_range[0]-grid_spacing, *lon_range, lon_range[-1]+grid_spacing]) # even if grid_spacing is negative, this will work out.
-        """
-
-
-        data_names = ['concentration', 'sigma']
-
-        for i in range(len(data_names)):
-            this_data = dat[:, 2+i]
-            
-            '''reshape to 2D, transpose to get [lon,lat] indexing'''
-            this_data = this_data.reshape(__lat_range.shape[0], __lon_range.shape[0]).T
-            # for index (i,j), `i` is longitude from `lon_range[0]` to `lon_range[-1]`, `j` is latitude from `lat_range[0]` to `lat_range[-1]`
-
-
-            '''units/corrections'''
-            if element_name == 'th':
-                correction=0.000001 # correct ppm to concentration out of 1
-            else:
-                correction=0.01 # correct weight percent to concentration out of 1
-            this_data = np.where(this_data != get_nanval(), this_data*correction, this_data)
-
-
-            '''edge case (part 2/2): longitude is cyclical, but data is not, so we duplicate one extra column on each edge of data & lon_range'''
-            left_edge = this_data[0, :]
-            right_edge = this_data[-1, :]
-            this_data = np.array([right_edge, *this_data, left_edge])
-
-
-            '''add to `meta_dat`'''
-            __meta_dat[element_name][data_names[i]] = this_data
+    global _dat_grs_xarr, _dat_grs_dict
 
 
 
-
-
-    '''use this to pre-compute volatile concentration so we're accessing once instead of thrice. make appropriate changes in `get` as well. note that adding raw data into one grid and then doing bilinear interpolation is not different from doing bilinear interpolation individually and adding them up.'''
-    data_names = ['concentration', 'sigma']
-    __meta_dat['cl+h2o+s'] = {}
-
-    for data_name in data_names:
-        __meta_dat['cl+h2o+s'][data_name] = __meta_dat['cl'][data_name] + __meta_dat['h2o'][data_name] + __meta_dat['s'][data_name]
-        __meta_dat['cl+h2o+s'][data_name] = np.where(__meta_dat['cl+h2o+s'][data_name] < 0, get_nanval(), __meta_dat['cl+h2o+s'][data_name])
-
-
-
-
-
+    '''download data files (if not already)'''
+    with utils.disable_pooch_logger():
+        fpaths_rawdat = pooch.retrieve(
+            fname      = '2022_Mars_Odyssey_GRS_Element_Concentration_Maps.zip',
+            url        = r'https://drive.google.com/file/d/1Z5Esv-Y4JAQvC84U-VataKJHIJ9OA4_8/view?usp=sharing',
+            known_hash = 'sha256:45e047a645ae8d1bbd8e43062adab16a22786786ecb17d8e44bfc95f471ff9b7',
+            path       = dirpath_data_root / 'GRS',
+            downloader = utils.download_gdrive_file,
+            processor  = pooch.Unzip(),
+        )
+    fpaths_rawdat = [Path(f) for f in fpaths_rawdat if 'README_EBH_SK_AR_SK.txt' not in f]
 
 
 
+    '''load data into xarray'''
+    dfs = []
+    for fpath_rawdat in fpaths_rawdat:
+        element = fpath_rawdat.stem.split('_')[0].lower()
 
-############################################################################################################################################
-""" functions """
+        df = pd.read_csv(
+            fpath_rawdat, 
+            sep='\s+', 
+            na_values=9999.999, 
+            header=0, 
+            usecols=[0, 1, 2, 3], 
+            names=['lat', 'lon', 'concentration', 'sigma']
+        )
+
+        if element == 'th':
+            scale_factor = 0.000001  # correct given "ppm" to concentration out of 1
+        else: 
+            scale_factor = 0.01      # correct "weight percent" to concentration out of 1
+        df[['concentration','sigma']] *= scale_factor
+
+        df['element'] = element
+        dfs.append(df)
+
+    all_dfs = pd.concat(dfs)
+
+    ## pre-compute volatiles array for speed/convenience
+    volatiles_df = all_dfs[all_dfs['element'].isin(['cl', 'h2o', 's'])]
+    volatiles_sum = volatiles_df.groupby(['lat', 'lon']).sum(min_count=3).reset_index()
+    volatiles_sum['element'] = 'volatiles'
+    dfs.append(volatiles_sum)
+    all_dfs = pd.concat(dfs)
+
+    ## tbh not sure about ideal indexing order lolz
+    # _dat_grs = xr.Dataset.from_dataframe(all_dfs.set_index(['lat', 'lon', 'element']))
+    # _dat_grs = xr.Dataset.from_dataframe(all_dfs.set_index(['element', 'lon', 'lat']))
+    _dat_grs_xarr = xr.Dataset.from_dataframe(all_dfs.set_index(['element', 'lat', 'lon'])) 
+
+    _dat_grs_xarr.attrs = {
+        'units': 'concentration out of 1',
+        'grid_spacing': 5,
+    }
+
+
+
+    '''load data into dictionary as well for speedy manual indexing'''
+    _dat_grs_dict = {
+        'lats': _dat_grs_xarr.lat.values,
+        'lons': _dat_grs_xarr.lon.values,
+        'attrs': _dat_grs_xarr.attrs,
+    }
+    
+    for element in _dat_grs_xarr.element.values:
+        _dat_grs_dict[element] = {}
+        for data_var in list(_dat_grs_xarr.data_vars):
+            _dat_grs_dict[element][data_var] = _dat_grs_xarr.sel(element=element)[data_var].values
+
+
+
+    '''lazy loadinggg'''
+    _has_been_initialized = True
+    return
 
 
 
 
-def __checkCoords(
-    lon: float, 
-    lat: float
+
+
+
+
+def get_pt(
+    element, 
+    lon, 
+    lat, 
+    quantity = 'concentration', 
+    normalize = False, 
 ):
-
-    if not (-180 <= lon <= 180):
-        raise ValueError(f'Longitude {lon} is not in range [-180, 180].')
-    if not (-87.5 <= lat <= 87.5):
-        raise ValueError(f'Latitude {lat} is not in range [-87.5, 87.5].')
-
-
-
-
-def get(
-    element_name: str, 
-    lon: float, 
-    lat: float, 
-    normalize=False, 
-    quantity='concentration'
-) -> float:
     """
     DESCRIPTION:
     ------------
-        Get GRS-derived concentration/sigma of an element at a desired coordinate.
+        Get GRS-derived concentration/sigma of an element *at a desired coordinate*. For large regions (more than 10^5 points), use `get_region`. 
     
-        
+    
     PARAMETERS:
     ------------
-        element_name : str
-            Element for which you want to make a global concentration map. Options are ['al','ca','cl','fe','h2o','k','si','s','th']. Casing does not matter.
+        *element : str
+            - Element for which you want to make a global concentration map. Options are ['al','ca','cl','fe','h2o','k','si','s','th']. 
         
-        lon : float
-            Longitude in range [-180, 180] (lon=0 cuts through Arabia Terra).
+        *lon : float 
+            - Longitude coordinate, choose one: 
+                - 'lon'  in range [-180, 180] (Arabia Terra in middle). 
+                - 'clon' in range [0, 360] (Arabia Terra at edges). 
+            (this is mostly preference, only functional difference is when you want to wraparound.)
         
-        lat : float
-            Latitude in range [-87.5, 87.5].
-        
-        normalize : bool (default False)
-            If True, normalize to a volatile-free (Cl, H2O, S) basis.
-                > "For such measurement [from GRS] to represent the bulk chemistry of the martian upper crust, it must be normalized to a volatile-free basis (22). That equates to a 7 to 14% increase in the K, Th, and U abundances (22), which we applied to the chemical maps by renormalizing to Cl, stoichiometric H2O, and S-free basis."
-                Source: "Groundwater production from geothermal heating on early Mars and implication for early martian habitability", Ojha et al. 2020, https://www.science.org/doi/10.1126/sciadv.abb1669
+        *lat : float
+            - Latitude coordinate in range [-90, 90]. 
         
         quantity : str (default 'concentration')
-            Quantity to plot. Options are ['concentration', 'sigma'].
+            - Quantity to plot. Options are ['concentration', 'sigma'].
+        
+        normalize : bool (default False)
+            - If True, normalize to a volatile-free (Cl, H2O, S) basis.
+                > "For such measurement [from GRS] to represent the bulk chemistry of the martian upper crust, it must be normalized to a volatile-free basis (22). That equates to a 7 to 14% increase in the K, Th, and U abundances (22), which we applied to the chemical maps by renormalizing to Cl, stoichiometric H2O, and S-free basis."
+                Source: "Groundwater production from geothermal heating on early Mars and implication for early martian habitability", Ojha et al. 2020, https://www.science.org/doi/10.1126/sciadv.abb1669
 
             
     RETURN:
     ------------
-        float
-            Surface concentration of an element at the desired coordinate, using bilinear interpolation if that coordinate is not precisely defined by the data
-                - Units are in concentration out of one (i.e. original wt% * 0.01 or ppm * 0.000001)
-                - If a nearby "pixel" (original 5x5 bin) is unresolved by GRS, just return the nanval.
-
-                
-    NOTES:
-    ------------
-        Our approaches to this computation have been, in order: sloppy manual calculation -> scipy.interpolate.RegularGridInterpolator -> optimized manual calculation (current). Relative to the current approach, the first approach is 2-3x slower (expected due to obvious optimizations), and the second approach is ~10x slower (unexpected, this seems to be a known bug with scipy). See more discussion here: https://stackoverflow.com/questions/75427538/regulargridinterpolator-excruciatingly-slower-than-interp2d/76566214#76566214.
+        float or nan:
+            - Surface concentration of an element at the desired coordinate, or nan if undefined in GRS data. 
+                - Units are in concentration out of one (i.e. original wt% * 0.01 or ppm * 0.000001). 
 
     """
 
-    __checkCoords(lon, lat)
+    '''checks'''
+    _initialize()
 
-
-
-    def bilinear_interpolation(x: float, y: float, points: list) -> float:
-        '''
-        Credit for this function: https://stackoverflow.com/a/8662355/22122546
-
-        Interpolate (x,y) from values associated with four points.
-        
-        points: list
-            four triplets:  (x, y, value).
-        
-        See formula at:  http://en.wikipedia.org/wiki/Bilinear_interpolation
-        '''
-
-        points = sorted(points)               # order points by x, then by y
-        (x1, y1, q11), (_x1, y2, q12), (x2, _y1, q21), (_x2, _y2, q22) = points
-
-        # if x1 != _x1 or x2 != _x2 or y1 != _y1 or y2 != _y2:
-        #     raise ValueError('points do not form a rectangle')
-        # if not x1 <= x <= x2 or not y1 <= y <= y2:
-        #     raise ValueError('(x, y) not within the rectangle')
-
-        return (q11 * (x2 - x) * (y2 - y) +
-                q21 * (x - x1) * (y2 - y) +
-                q12 * (x2 - x) * (y - y1) +
-                q22 * (x - x1) * (y - y1)
-            ) / ((x2 - x1) * (y2 - y1) + 0.0)
+    if element not in ['al','ca','cl','fe','h2o','k','si','s','th']:
+        raise ValueError(f"Element {element} is not in list of supported elements: ['al','ca','cl','fe','h2o','k','si','s','th'].")
+    
+    if not (-180 <= lon <= 360):
+        raise ValueError(f'Given longitude coordinate {lon=} is out of range [-180, 360].')
+    if not (-90 <= lat <= 90):
+        raise ValueError(f'Given latitude coordinate {lat=} is out of range [-90, 90].')
+    
+    lon = utils.clon2lon(lon) # this only modifies values btwn 180 and 360
     
 
 
-    # if element_name in __volatiles:
-    #     normalize = False
-    #     # The function header defaults `normalize=True`, so a well-meaning user calling `GRS.visualize('h2o')` will encounter the exception 'Cannot normalize a volatile...'. T
+    '''accessing'''
 
-
+    """NOTE: See 'Footnote 2' at bottom of `GRS.py` for explanation of this indexing method."""
     
-    if not normalize: # just return the bilinear interpolation on the raw data
-
-        # since `lon_range_cycled` and `lat_range` are decreasing rather than increasing, we do some trickery on top of `np.searchsorted()` to get the desired indices.
-        i_lon = __lon_range_cycled.shape[0] - np.searchsorted(np.flip(__lon_range_cycled), lon) # note that i_lon is derived from lon_range_cycled, not lon_range, so only use it to index that!
-        j_lat = __lat_range.shape[0] - np.searchsorted(np.flip(__lat_range), lat)
-
-        element_name = element_name.lower()
-
-        points = (
-            (
-                __lon_range_cycled[i_lon - 1],
-                __lat_range[j_lat - 1],
-                __meta_dat[element_name][quantity][i_lon - 1, j_lat - 1]
-            ),
-            (
-                __lon_range_cycled[i_lon],
-                __lat_range[j_lat - 1],
-                __meta_dat[element_name][quantity][i_lon, j_lat - 1]
-            ),
-            (
-                __lon_range_cycled[i_lon - 1],
-                __lat_range[j_lat],
-                __meta_dat[element_name][quantity][i_lon - 1, j_lat]
-            ),
-            (
-                __lon_range_cycled[i_lon],
-                __lat_range[j_lat],
-                __meta_dat[element_name][quantity][i_lon, j_lat]
-            )
-        )
-
-
-        # ### alternative version to the above that uses list comprehension as opposed to hard-coding -- functionally equivalent, possibly faster. i don't know.
-        # points = [
-        #     (
-        #         lon_range_cycled[i_lon-1+i],
-        #         lat_range[j_lat-1+j],
-        #         meta_dat[element_name][quantity][i_lon-1+i, j_lat-1+j]
-        #     )
-        #     for i, j in [(i, j) for i in range(2) for j in range(2)]
-        # ]
-
-        val = bilinear_interpolation(lon, lat, points)
-
-        return val if val >= 0 else get_nanval() # This line ensures that where GRS data is undefined, we return exactly the nanval. Without this, we might return very large negative values that approach the nanval. Examples here: https://files.catbox.moe/khetcp.png & https://files.catbox.moe/sri8m4.png
+    index_nearest_lat = _dat_grs_dict['lats'].shape[0] - np.argmin(np.flip(np.abs(_dat_grs_dict['lats'] - lat))) - 1
+    index_nearest_lon = _dat_grs_dict['lons'].shape[0] - np.argmin(np.flip(np.abs(_dat_grs_dict['lons'] - lon))) - 1    
     
-    
-    else: # Uses recursion. See docstring for more details on `normalize=True` parameter.
-        
-        __volatiles = ('cl', 'h2o', 's')
-        
-        if element_name in __volatiles:
-            raise Exception('Cannot normalize a volatile (Cl, H2O, or S) to a volatile-free basis.')
-        
-        raw_concentration = get(element_name=element_name, lon=lon, lat=lat, normalize=False, quantity=quantity)
-        if raw_concentration < 0:
-            return get_nanval()
-        
+    val = _dat_grs_dict[element][quantity][index_nearest_lat][index_nearest_lon] 
 
-        '''option 1/2: compute sum of volatiles by accessing/summing each volatile individually'''
-        # sum_volatile_concentration = 0
-        # for volatile in __volatiles:
-        #     volatile_concentration = get(element_name=volatile, lon=lon, lat=lat, normalize=False, quantity=quantity)
-        #     if volatile_concentration < 0:
-        #         return get_nanval()
-        #     sum_volatile_concentration += volatile_concentration
-        # return raw_concentration/(1-sum_volatile_concentration)
-    
+    if normalize:
+        if element in ['cl','h2o','s']:
+            raise ValueError(f"Can't normalize a volatile element ('{element}') to a volatile-free (cl, h2o, s) basis.")
+        val_volatiles = _dat_grs_dict['volatiles'][quantity][index_nearest_lat][index_nearest_lon]
+        val = val/(1-val_volatiles)
 
-        '''option 2/2: compute sum of volatiles by accessing pre-computed sum of volatiles, noticeably faster. pre-computing is done in section "initialize (run upon import)". '''
-        sum_volatile_concentration = get(element_name='cl+h2o+s', lon=lon, lat=lat, normalize=False, quantity=quantity)
-        val = raw_concentration/(1-sum_volatile_concentration)
-        return val if val >= 0 else get_nanval()
-
-    
+    return val
 
 
 
@@ -407,217 +268,131 @@ def get(
 
 
 
-
-
-
-
-
-
-
-def visualize(
-    element_name: str, 
-    normalize=False, 
-    quantity='concentration', 
-    lon_bounds: tuple = (-180,180), 
-    lat_bounds: tuple = (-60,60), 
-    grid_spacing: float = 5,
-    colormap='viridis',
-    overlay=False,
-    transparency_data=0.6,
-    transparency_mola=0.9,
-    figsize=(10,7)
+def get_region(
+    element, 
+    lons         = None,
+    lats         = None,
+    lon_bounds   = None, 
+    lat_bounds   = None, 
+    grid_spacing = None,
+    num_points   = None, 
+    quantity     = 'concentration',
+    normalize    = False, 
+    as_xarray    = False,
 ):
     """
-    DESCRIPTION:
-    ------------
-        Create a map of concentration/sigma for some element.
-    
+    lon_bounds, clon_bounds, lat_bounds : tuple(float, float)
+        - Bounding box for data swath. 
 
-    PARAMETERS:
-    ------------
-        element_name : str
-            Element for which you want to make a global concentration map. Options are ['al','ca','cl','fe','h2o','k','si','s','th']. Casing does not matter.
-        
-        normalize : bool (default False)
-            If True, normalize to a volatile-free (Cl, H2O, S) basis. See `get` docstring for more details.
-        
-        quantity : str (default 'concentration')
-            Quantity to plot. Options are ['concentration', 'sigma'].
-        
-        lon_bounds, lat_bounds : tuple(2 floats) (default entire map)
-            Bounding box for visualization. Longitude in range [-180, 180], latitude in range [-87.5, 87.5].
-        
-        grid_spacing : float (default 5 degrees)
-            Spacing between "pixels" in degrees. Note that original data is 5x5 degree bins, so anything smaller than that will be interpolated. Also note that smaller resolutions will take longer to plot.
-        
-        colormap : str (default 'jet')
-            Colormap to use. See https://matplotlib.org/stable/tutorials/colors/colormaps.html for options.
+    grid_spacing : float
+        - Spacing between points being sampled in degrees. Note that original data is 5x5 degree bins.
 
-        overlay : bool (default False)
-            If True, overlay a transparent MOLA map on top of the GRS map. Note that this will take longer to plot.
-
-        transparency_data : float (default 0.6)
-            If overlay=True, set transparency of the GRS data from 0 (transparent) to 1 (opaque).
-
-        transparency_mola : float (default 0.9)
-            If overlay=True, set transparency of the MOLA map from 0 (transparent) to 1 (opaque).
-
-        figsize : (float, float) (default (10,7))
-            Width, height in inches. 
-
-
-    NOTES:
-    ------------
-        The default arguments for `lon_bounds`, `lat_bounds`, and `grid_spacing` will display the original 5x5 bins from the data.
-
-
-    REFERENCES:
-    ------------
-        'Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif'
-            > Fergason, R.L, Hare, T.M., & Laura, J. (2017). HRSC and MOLA Blended Digital Elevation Model at 200m. Astrogeology PDS Annex, U.S. Geological Survey.
-            - Original download link: https://astrogeology.usgs.gov/search/map/Mars/Topography/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendShade_Global_200mp_v2
-            - The original file is 5 GB which is unnecessarily high resolution. We downsample the file by reducing the width/height by a factor of 7. Maps with other reduction factors as well as the code to do so can be found here: https://drive.google.com/drive/u/0/folders/1SuURWNQEX3xpawN6a-LEWIduoNjSVqAF.
-
+    note: force the user to define their own `lons`/`lats` values so they can input it to multiple modules (GRS,Crust,etc.) and ultimately encourage them to do calculation via numpy arrays which is significantly faster than manual loop iterating.
     """
 
-    lon_left, lon_right = lon_bounds
-    lat_bottom, lat_top = lat_bounds
 
-    __checkCoords(lon_left, lat_bottom)
-    __checkCoords(lon_left, lat_top)
-    __checkCoords(lon_right, lat_bottom)
-    __checkCoords(lon_right, lat_top)
+    '''args     (this approach is a bit verbose, but easy to understand and comprehensive)'''
+
+    error_msg = 'Invalid inputs for `get_region`. Options are: [1] `lons=..., lats=...` OR [2] `lon_bounds=..., lat_bounds=..., grid_spacing=...` OR [3] `lon_bounds=..., lat_bounds=..., num_points=...`.'
+    ## input case 1:
+    if ((lons is not None) and (lats is not None)):
+        ## eliminate case 2:
+        if ((lon_bounds is not None) or (lat_bounds is not None) or (grid_spacing is not None) or (num_points is not None)):
+            raise ValueError(error_msg)
+        ## execution:
+        pass
+    ## input case 2:
+    elif ((lon_bounds is not None) and (lat_bounds is not None)):
+        ## eliminate case 1:
+        if ((lons is not None) or (lats is not None)):
+            raise ValueError(error_msg)
+        ## execution (based on `grid_spacing` xor `num_points`):
+        if ((grid_spacing is not None) and (num_points is None)):
+            lons = np.arange(lon_bounds[0], lon_bounds[1]+grid_spacing, grid_spacing)
+            lats = np.arange(lat_bounds[0], lat_bounds[1]+grid_spacing, grid_spacing)
+        elif ((grid_spacing is None) and (num_points is not None)):
+            lons = np.linspace(lon_bounds[0], lon_bounds[1], num_points)
+            lats = np.linspace(lat_bounds[0], lat_bounds[1], num_points)
+        else:
+            raise ValueError(error_msg + ' (HINT: Specify either `grid_spacing` OR `num_points`, but not both.)')
+
+    
+
+    '''checks'''
+    _initialize()
+
+    if element not in ['al','ca','cl','fe','h2o','k','si','s','th']:
+        raise ValueError(f"Element {element} is not in list of supported elements: ['al','ca','cl','fe','h2o','k','si','s','th'].")
+    
+    if np.any(lons < -180) or np.any(lons > 360):
+        raise ValueError(f'One value in given `lons` array is out of range [-180, 360].')
+    if np.any(lats < -90) or np.any(lats > 90):
+        raise ValueError(f'One value in given `lats` array is out of range [-90, 90].')
+    
+    lons = utils.clon2lon(lons) # this only modifies values btwn 180 and 360
+    
+    ## If you don't round, then xarray (`get_region`) and numpy indexing (`get_pt`) methods will give different answers in response to numpy arrays due to floating point imprecision. For some reason I'm not fully sure why. Took me probably 3 hours to figure that out.
+    lons = np.round(lons, 10)
+    lats = np.round(lats, 10)
+    
 
 
+    '''accessing'''
 
-    '''
-    *** If adapting visualization function, modify this function ***
-    '''
-    def plotThis(lon, lat):
-        val = get(element_name=element_name, lon=lon, lat=lat, normalize=normalize, quantity=quantity)
-        return val
+    arr = _dat_grs_xarr.sel(element=element).sel(lon=lons, lat=lats, method='nearest')[quantity]
 
+    if normalize:
+        if element in ['cl','h2o','s']:
+            raise ValueError(f"Can't normalize a volatile element ('{element}') to a volatile-free (cl, h2o, s) basis.")
+        arr_volatiles = _dat_grs_xarr.sel(element='volatiles').sel(lon=lons, lat=lats, method='nearest')[quantity]
+        arr = arr/(1-arr_volatiles)
 
+    if as_xarray == False:
+        arr = arr.values
 
-    '''dataset to be plotted'''
-    dat = [[
-        plotThis(lon,lat)
-        for lon in np.arange(lon_left, lon_right, grid_spacing)]
-        for lat in np.arange(lat_bottom, lat_top, grid_spacing)]
-
-    '''apply mask'''
-    dat = np.asarray(dat)
-    # dat = np.ma.masked_where((dat < 0), dat)
-    dat = np.ma.masked_where((dat == get_nanval()), dat)
-
-
-
-
-    '''plotting'''
-
-
-    fig = plt.figure(figsize=figsize)
-    ax = plt.axes()
-
-
-
-    '''mola overlay'''
-    if overlay:
-
-        global filepath_mola
-
-        if filepath_mola == '':
-            logger = pooch.get_logger()
-            logger.disabled = True
-            filepath_mola = pooch.retrieve(
-                fname='Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif',
-                url=r'https://drive.google.com/file/d/1i278DaeaFCtY19vREbE35OIm4aFRKXiB/view?usp=sharing',
-                known_hash='sha256:93d32f9b404b7eda1bb8b05caa989e55b219ac19a005d720800ecfe6e2b0bb6c',
-                path=utils.getPath(pooch.os_cache('redplanet'), 'Maps'),
-                downloader=utils.download_gdrive_file
-            )
-            logger.disabled = False
-
-        PIL.Image.MAX_IMAGE_PIXELS = 116159282 + 1 # get around PIL's "DecompressionBombError: Image size (-n- pixels) exceeds limit of 89478485 pixels, could be decompression bomb DOS attack." error
-
-        mola = PIL.Image.open(filepath_mola)
-
-        width, height = mola.size
-
-        left = ( (lon_left+180) / 360 ) * width
-        right = ( (lon_right+180) / 360 ) * width
-        top = ( (-lat_top+90) / 180 ) * height          # lat values are strange because PIL has (0,0) at the top left. don't think too hard about it, this works.
-        bottom = ( (-lat_bottom+90) / 180 ) * height
-
-        mola = mola.crop((left, top, right, bottom))
-
-        im_mola = ax.imshow(mola, cmap='gray', extent=[lon_left, lon_right, lat_bottom, lat_top], alpha=transparency_mola)
-
-        im_dat = ax.imshow(dat[::-1], cmap=colormap, extent=[lon_left, lon_right, lat_bottom, lat_top], alpha=transparency_data)
-    else:
-        im_dat = ax.imshow(dat[::-1], cmap=colormap, extent=[lon_left, lon_right, lat_bottom, lat_top])
+    return arr
 
 
 
 
 
 
-    def chem_cased(s1: str) -> str:
-        """Convert a string to chemist's casing."""
-        # s2 = ''
-        # for i, c in enumerate(s1):
-        #     if i == 0 or not(s1[i-1].isalpha()):
-        #         s2 += c.upper()
-        #     else:
-        #         s2 += c
-        # return s2
-        s2 = [c.upper() if i == 0 or not s1[i-1].isalpha() else c for i, c in enumerate(s1)]
-        return ''.join(s2)
 
 
+'''
+[FOOTNOTE 1]
 
-    '''titles'''
-    ax.set_title(f'{"Normalized" if normalize else "Raw"} {chem_cased(element_name)} Map from GRS')
-    ax.set_xlabel('Longitude')
-    ax.set_ylabel('Latitude')
-
-    '''axis formatter'''
-    ax.xaxis.set_major_formatter('{x}$\degree$')
-    ax.yaxis.set_major_formatter('{x}$\degree$')
-
-
-    # (aesthetic preference)
-    if lon_bounds == (-180,180):
-        x_spacing = 60
-        ax.set_xticks(np.linspace(lon_left, lon_right, int((lon_right-lon_left)/x_spacing)+1))
-
-
-    '''x ticks'''
-    '''Option 1: Set the spacing between x ticks'''
-    # x_spacing = 60
-    # ax.set_xticks(np.linspace(lon_left, lon_right, int((lon_right-lon_left)/x_spacing)+1))
-    '''Option 2: Set the number of x ticks'''
-    # x_ticks = 7
-    # ax.set_xticks(np.linspace(lon_left, lon_right, x_ticks))
-
-    '''y ticks'''
-    '''Option 1: Set the spacing between y ticks'''
-    # y_spacing = 25
-    # ax.set_yticks(np.linspace(lat_bottom, lat_top, int((lat_top-lat_bottom)/y_spacing)+1))
-    '''Option 2: Set the number of y ticks'''
-    # y_ticks = 7
-    # ax.set_yticks(np.linspace(lat_bottom, lat_top, y_ticks))
+Note to future self:
+    - I've been debating for a while whether `GRS.py` and similar should be written as: 
+        1. classes (i.e. explicitly declared with `class GRS():`, but forced to be singletons with decorators and `cls` method args), or 
+        2. modules (i.e. just a script with definitions that can be imported as you wish, effectively a singleton instance). 
+    - I settled on the latter since there's no reason to want multiple instances for most of these data accessing classes, it'll just add confusion and force the user to write unnecessary code. 
+        i. Reservation: "Performing data-loading operations when importing is bad practice." 
+            --> Solution: Lazy-loading, see `_has_data_been_loaded` variable in this module. 
+        ii. Reservation: "You're creating too many useless folders for `GRS/GRS.py`, `Crust/Crust.py`, etc." 
+            --> Solution: That's not a problem, it's functionally advantageous because it's easier to extend in the future, and aesthetically I prefer this structure since it appears much more neat. Also there are major packages that do this too so no big deal. 
+        iii. Reservation: "I'm forcing myself to declare global variables, that's bad practice!" 
+            --> Solution: Globals aren't always bad! You should understand their strengths and weaknesses and judge in the context of the specific task you're working on. Consider an excerpt from this short article/blog/essay "Global Variables Are OK, and In Fact Necessary" by Prof. Norm Matloff: https://heather.cs.ucdavis.edu/matloff/public_html/globals.html
+                > "But much more significantly, the same people who make the above objection mysteriously have no problem with "global" use of member variables in object-oriented languages. A member variable in a class is accessible to all member functions in the class. In other words, the variable is "global" to all the functions in the class. If a member function accesses the member variable directly, i.e. not via parameters, then this is exactly the same situation that the "anti-globalists" decry."
+            .... If I believe that `GRS.py` is better suited to be a module than a class due to singleton/template reasoning, but my only reservations/drawback is that I can't declare global variables in modules like I can do with classes, then I'm being a bozo! I *CAN* declare global variables in modules just like I would in a class -- my reluctancy is purely motivated by hearing and internalizing dogma. 
+'''
 
 
-    '''color bar'''
-    cax = fig.add_axes([ax.get_position().x1+0.02,ax.get_position().y0,0.02,ax.get_position().height])
-    cbar = plt.colorbar(im_dat, cax=cax)
-    cbar.set_label(f'{chem_cased(element_name)} {quantity.capitalize()} [out of 1]', y=0.5)
+'''
+[FOOTNOTE 2]
 
-    plt.show()
+- Consider this problem:
+    - "Given a value (lon/lat) and an array (lons/lats), find the index (index_nearest_lon/lat) of the array element which is closest to the given value."
 
+- There are two implementations to solve this...
+    (1) 
+        ```
+        index_nearest_lat = np.argmin(np.abs(dat_grs_dict['lats'] - lat))
+        ```
+    (2) 
+        ```
+        index_nearest_lat = _dat_grs_dict['lats'].shape[0] - np.argmin(np.flip(np.abs(_dat_grs_dict['lats'] - lat))) - 1
+        ```
 
-
-
-############################################################################################################################################
-__init()
+- **The only difference** between the two implementations is, in the case of a *tie*, the first method chooses the lower index, and the second method chooses the higher index. We choose the latter because xarray's `sel` function with `method='nearest'` always chooses the higher index and we want consistent behavior here. 
+'''

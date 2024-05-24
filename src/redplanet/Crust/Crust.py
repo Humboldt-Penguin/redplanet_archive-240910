@@ -4,188 +4,80 @@ https://github.com/Humboldt-Penguin/redplanet
 
 For more information, call `help(Crust)` or directly view docstring in `Crust/__init__.py`.
 
+...
+
+TODO:
+    [ ] Finish writing/fleshing out docstrings. 
+    [ ] Add proper units + attributes + citations to xarray dataset. 
+    [ ] Write a `plot` function? Need to rewrite the corresponding `visualize` function in `redplanet.utils` first (rename to `plot` there as well). 
+
 """
 
 
-
-############################################################################################################################################
-
-# from redplanet import utils
-
 from redplanet import utils
 
+from pathlib import Path
 import json
 
 import pooch
-
-import pyshtools as pysh
 import numpy as np
-import matplotlib.pyplot as plt
-import PIL
-
-
-
-
-############################################################################################################################################
-""" module variables """
-
-
-
-datapath = utils.getPath(pooch.os_cache('redplanet'), 'Crust')
-'''
-Path where pooch downloads/caches data.
-'''
-
-
-
-filepath_mola = ''
-'''
-Only try to download the mola map if the user calls `GRS.visualize()` with `overlay=True`.
-'''
-
-
-
-# dict_RIM = {
-#     0: "DWThot",
-#     1: "DWThotCrust1",
-#     2: "DWThotCrust1r",
-#     3: "EH45Tcold",
-#     4: "EH45TcoldCrust1",
-#     5: "EH45TcoldCrust1r",
-#     6: "EH45ThotCrust2",
-#     7: "EH45ThotCrust2r",
-#     8: "LFAK",
-#     9: "SANAK",
-#     10: "TAYAK",
-#     11: "DWAK",
-#     12: "ZG_DW",
-#     13: "YOTHotRc1760kmDc40km",
-#     14: "YOTHotRc1810kmDc40km",
-#     15: "Khan2022",
-# }
-# dict_RIM.update(dict([reversed(i) for i in dict_RIM.items()]))
-
-# def RIM_toInt(RIM: str) -> int:
-#     return dict_RIM[RIM]
-# def RIM_toStr(RIM_int: int) -> str:
-#     return dict_RIM[RIM_int]
+import pandas as pd
+import xarray as xr
+import pyshtools as pysh
 
 
 
 
 
 
+## lazy initialization.
+_has_been_initialized = False
 
+## path where pooch downloads/caches data.
+_datapath = pooch.os_cache('redplanet') / 'Crust'
 
-current_model = {}
-'''
-Holds all information for the currently loaded crustal thickness model. Fields are:
-    - (model parameters)
-        - 'model_name'
-            - f'{RIM}-{insight_thickness}-{rho_south}-{rho_north}'
-                - 'RIM'
-                    - Reference interior model name (see `dict_RIM` for options)
-                - 'insight_thickness'
-                    - Seismic thickness at InSight landing site [km]
-                - 'rho_north'
-                    - Crustal density [kg/m^3] at north of dichotomy
-                - 'rho_south'
-                    - Crustal density [kg/m^3] at south of dichotomy
-        - 'grid_spacing'
-            - Grid spacing [deg]
-        - 'lmax'
-            - Maximum spherical harmonic degree for models
-    - (data)
-        - 'lats'
-            - 1D np.ndarray of latitudes [deg]
-        - 'lons'
-            - 1D np.ndarray of longitudes [deg]
-        - 'dat_topo'
-            - 2D np.ndarray of topography [km]
-        - `grid_topo`
-            - pysh.SHGrid of topography, used to generate thick via `grid_topo - grid_moho`
-        - 'dat_moho'
-            - 2D np.ndarray of Moho depth [km]
-        - 'dat_thick'
-            - 2D np.ndarray of crustal thickness [km]
-'''
-def get_current_model(include_data=False) -> dict:
-    if include_data:
-        return current_model
-    else:
-        selected_keys = ['model_name', 'RIM', 'insight_thickness', 'rho_north', 'rho_south', 'grid_spacing', 'lmax']
-        return {key: value for key, value in current_model.items() if key in selected_keys}
+## holds Crust data in xarray dataset or dictionary format.
+dat_crust_xrds = None
+dat_crust_dict = None
 
-
-def get_model_name() -> str:
-    return current_model['model_name']
+dat_dichotomy_coords = None
 
 
 
-
-
-
-dichotomy_coords: np.ndarray
-'''Nx2 np.ndarray of dichotomy coordinates (lon, lat) [deg].'''
-
-
-
-
-
-
-
-############################################################################################################################################
-""" initialize (run upon import, last line of file) """
-
-
-def __init():
+def get_rawdata(how=None):
     """
-    DESCRIPTION:
-    ------------
-        Download data (or load from cache) for topography and basic moho/thickness model and format.
-    
-    REFERENCES:
-    ------------
-        Dichotomy coordinates:
-            > Andrews-Hanna, J., Zuber, M. & Banerdt, W. The Borealis basin and the origin of the martian crustal dichotomy. Nature 453, 1212–1215 (2008). https://doi.org/10.1038/nature07011
-            - The file itself ('dichotomy_coordinates-JAH-0-360.txt') is downloaded from 
-                > Wieczorek, Mark A. (2022). InSight Crustal Thickness Archive [Data set]. Zenodo. https://doi.org/10.5281/zenodo.6477509
+    `format` options: ['xarray', 'dict', 'dichotomy']
 
+    Note: when viewing/exploring dictionaries, it may help to call:
+        ```
+        from redplanet import utils
+        utils.print_dict(dat_something_dict)     # insert any dictionary here
+        ```
     """
+    if how is None:
+        raise ValueError('Options are ["xarray", "dict", "dichotomy"].')
 
-    '''temporarily disable the logger so we don't get unnecessary output every time a file is downloaded for the first time'''    
-    logger = pooch.get_logger()
-    logger.disabled = True
-
-
-    '''load dichotomy coordinates'''
-    filepath = pooch.retrieve(
-        fname='dichotomy_coordinates-JAH-0-360.txt',
-        url=r'https://drive.google.com/file/d/17exPNRMKXGwa3daTEBN02llfdya6OZJY/view?usp=sharing',
-        known_hash='sha256:42f2b9f32c9e9100ef4a9977171a54654c3bf25602555945405a93ca45ac6bb2',
-        path=datapath,
-        downloader=utils.download_gdrive_file,
-    )
-
-    global dichotomy_coords
-    dichotomy_coords = np.loadtxt(filepath)
-
-    dichotomy_coords[:,0] = utils.clon2lon(dichotomy_coords[:,0])
-    edge = np.where(dichotomy_coords[:,0] == -180)[0][0]
-    dichotomy_coords = np.vstack((dichotomy_coords[edge:], dichotomy_coords[:edge]))
-    dichotomy_coords = np.vstack((dichotomy_coords, (dichotomy_coords[0,0]+360, dichotomy_coords[0,1]), (dichotomy_coords[1,0]+360, dichotomy_coords[1,1]) ))
-    
-
-    '''load a basic topography model. grid spacing 0.1 seems to be a good balance of resolution and speed.'''
-    load_topo(grid_spacing=0.1)
-
-    '''load a basic moho/thickness model.'''
-    load_model(RIM='Khan2022', insight_thickness=39, rho_north=2900, rho_south=2900)
+    _initialize()
+    match how:
+        case 'xarray':
+            return dat_crust_xrds
+        case 'dict':
+            return dat_crust_dict
+        case 'dichotomy':
+            return dat_dichotomy_coords
+        case _:
+            raise ValueError('Options are ["xarray", "dict", "dichotomy"].')
 
 
 
-
-    logger.disabled = False
+def get_model_info():
+    return {
+        'name': dat_crust_xrds.attrs.get('moho_model_name'), 
+        'RIM': dat_crust_xrds.attrs.get('moho_model_RIM'), 
+        'insight_thickness': dat_crust_xrds.attrs.get('moho_model_insight_thickness'), 
+        'rho_north': dat_crust_xrds.attrs.get('moho_model_rho_north'), 
+        'rho_south': dat_crust_xrds.attrs.get('moho_model_rho_south'), 
+    }
 
 
 
@@ -197,89 +89,171 @@ def __init():
 
 
 
-############################################################################################################################################
-""" functions """
+
+def _initialize():
+
+    '''lazy initialization uwu'''
+    global _has_been_initialized
+    if _has_been_initialized:
+        return
+
+    '''load topo+dichotomy only -- user should consciously think about which moho to choose, rather than getting an arbitrary model for free'''
+
+
+    def _load_dichotomy():
+
+        global dat_dichotomy_coords
+
+        '''download / cache dichotomy coords'''
+        with utils.disable_pooch_logger():
+            fpath_dichotomy_coords = pooch.retrieve(
+                fname      = 'dichotomy_coordinates-JAH-0-360.txt',
+                url        = r'https://drive.google.com/file/d/17exPNRMKXGwa3daTEBN02llfdya6OZJY/view?usp=sharing',
+                known_hash = 'sha256:42f2b9f32c9e9100ef4a9977171a54654c3bf25602555945405a93ca45ac6bb2',
+                path       = _datapath / 'dichotomy',
+                downloader = utils.download_gdrive_file,
+            )
+        fpath_dichotomy_coords = Path(fpath_dichotomy_coords)
+
+
+        '''load into Nx2 numpy array of dichotomy coordinates, structured (lon, lat).'''
+        dat_dichotomy_coords = np.loadtxt(fpath_dichotomy_coords)
+
+        ## fix the lons (convert from `0->360` to `0->180 U -180->0` and sort)
+        dat_dichotomy_coords[:,0] = utils.clon2lon(dat_dichotomy_coords[:,0])
+        dat_dichotomy_coords = dat_dichotomy_coords[np.argsort(dat_dichotomy_coords[:,0])]
+
+        ## add wraparound coordinates for safety / convenience
+        dat_dichotomy_coords = np.vstack((
+            dat_dichotomy_coords, 
+            [dat_dichotomy_coords[0,0]+360, dat_dichotomy_coords[0,1]], 
+            [dat_dichotomy_coords[1,0]+360, dat_dichotomy_coords[1,1]], 
+        ))
+
+
+
+    _load_dichotomy()
+    # load_topo()
+
+    '''lazy loadinggg'''
+    _has_been_initialized = True
+
+    return
 
 
 
 
-def load_topo(grid_spacing=0.1):
-    """
-    DESCRIPTION:
-    ------------
-        Loads a basic topography model. This is called automatically upon import, but can be called again if the user wants to change the grid spacing (not recommended). 
+
+
+
+
+
+
+
+
+def is_above_dichotomy(lon, lat):
+
+    _initialize()
+
+    i_lon = np.searchsorted(dat_dichotomy_coords[:,0], lon, side='right') - 1
+    llon, llat = dat_dichotomy_coords[i_lon]
+    rlon, rlat = dat_dichotomy_coords[i_lon+1]
+
+    tlat = llat + (rlat-llat)*( (lon-llon)/(rlon-llon) )
+    return lat >= tlat
+
+    # v1 = (rlon-llon, rlat-llat)
+    # v2 = (rlon-lon, rlat-lat)
+    # xp = v1[0]*v2[1] - v1[1]*v2[0]  # cross product magnitude
+    # return xp >= 0
+
+
+
+
+
+
+
+
+
+def load_topo(grid_spacing=0.1): #, maximum_degree=None):
+
+    _initialize()
+
+    global dat_crust_xrds
+
+
+    ## too annoying to write this out, and not even that important, maybe figure this out later.
+    # '''args handling'''
+    # if ((grid_spacing is None) and (maximum_degree is None)):
+    #     raise ValueError('Must provide either `grid_spacing` or `maximum_degree` (neither was provided).')
+    # elif ((grid_spacing is not None) and (maximum_degree is not None)):
+    #     raise ValueError('Must provide *either* `grid_spacing` or `maximum_degree` (not both).')
+    # elif ((grid_spacing < 0.035) or (maximum_degree > 2600)):
+    #     raise ValueError('Input resolution exceeds maximum resolution of our spherical harmonic model (must have `grid_spacing >= 0.035` or `maximum_degree <= 2600`).')
+
+
+    # '''format inputs'''
+    # if (grid_spacing is not None):
+    #     lmax = round(90. / grid_spacing - 1)
+    #     grid_spacing = 180. / (2 * lmax + 2)
+    # else:
+    #     lmax = maximum_degree
+    #     grid_spacing = 180. / (2 * lmax + 2)
         
-        We save both a 2d numpy array and a pysh.SHGrid object, which can be used to generate crustal thickness models later on without having to reload topography. 
-    
-    PARAMETERS:
-    ------------
-        grid_spacing : float
-            Grid spacing between explicit data points [deg] -- anything between this is interpolated.
 
-    REFERENCES:
-    ------------
-        "MarsTopo2600 is a 2600 degree and order spherical harmonic model of the shape of the planet Mars." - pyshtools documentation        
-            > Wieczorek, Mark A. (2015). Spherical harmonic model of the shape of Mars: MarsTopo2600 [Data set]. Zenodo. https://doi.org/10.5281/zenodo.3870922
-            The actual file, 'MarsTopo2600.shape.gz', is reuploaded to Google Drive for significantly increased downloading speeds (~10 seconds as opposed to 3 minutes).
-
-        Textbook:
-            > Wieczorek, M.A. (2015). Gravity and Topography of the Terrestrial Planets, Treatise on Geophysics, 2nd edition, Oxford, 153-193, doi:10.1016/B978-0-444-53802-4.00169-X.
-
-    """
 
     lmax = round(90. / grid_spacing - 1)
     grid_spacing = 180. / (2 * lmax + 2)
 
 
-    filepath = pooch.retrieve(
-        fname='MarsTopo2600.shape.gz',
-        url=r'https://drive.google.com/file/d/1so3sGXNzdYkTdpzjvOxwYBsvr1Y1lwXt/view?usp=sharing',
-        known_hash='sha256:8882a9ee7ee405d971b752028409f69bd934ba5411f1c64eaacd149e3b8642af',
-        path=datapath,
-        downloader=utils.download_gdrive_file,
-    )
-    topo = pysh.SHCoeffs.from_file(filepath, lmax=lmax, name='MarsTopo2600', units='m', encoding='utf-8')
-    topo_grid = topo.expand(grid='DH2', extend=True) / 1.e3
+    '''load topography'''
+
+    if grid_spacing == 0.1:
+        '''OPTION 1/2: use pre-computed grid for speed -- see 'Footnote 1' at bottom of `Crust.py` for further discussion on this.'''
+        with utils.disable_pooch_logger():
+            fpath_topo_grid = pooch.retrieve(
+                fname      = 'pysh-ShGrid_MarsTopo2600_0.1deg_km.npy',
+                url        = r'https://drive.google.com/file/d/10m0S4eunb05jkOf4rwnxiWAToLVpt1hq/view?usp=sharing',
+                known_hash = 'sha256:1a7e7fdfc23b8b8d68c115469888fcf304957ec681ebe12295d7e8cef31feb61',
+                path       = _datapath / 'topo',
+                downloader = utils.download_gdrive_file,
+            )
+
+        # topo_grid = Path(topo_grid)  # causes error when trying to readfile with pysh.SHCoeffs.from_file, it expects a string
+        topo_shgrid = pysh.SHGrid.from_file(fpath_topo_grid, binary=True)
 
 
-    lons = utils.clon2lon(topo_grid.lons())
-    lats = topo_grid.lats()
-    dat_topo = topo_grid.to_array()
+    else:
+        '''OPTION 2/2: if user is manually requesting a finer grid, compute manually -- the overhead is downloading additional ~300MB to cache and 3-10 seconds processing, so recommend avoiding this.'''
+        with utils.disable_pooch_logger():
+            fpath_MarsTopo2600 = pooch.retrieve(
+                fname      = 'MarsTopo2600.shape.gz',
+                url        = r'https://drive.google.com/file/d/1so3sGXNzdYkTdpzjvOxwYBsvr1Y1lwXt/view?usp=sharing',
+                known_hash = 'sha256:8882a9ee7ee405d971b752028409f69bd934ba5411f1c64eaacd149e3b8642af',
+                path       = _datapath / 'topo',
+                downloader = utils.download_gdrive_file,
+                processor  = pooch.Decompress(),
+            )
 
-
-    i_left = np.where(lons == -180)[0][0]
-    lons = np.hstack((lons[i_left:], lons[:i_left]))
-    dat_topo = np.hstack((dat_topo[:,i_left:], dat_topo[:,:i_left]))
-    lats = np.flip(lats)
-    dat_topo = np.flip(dat_topo, axis=0)
-    lons = np.array( (*lons, lons[-1]+grid_spacing, lons[-1]+grid_spacing*2) )
-    dat_topo = np.hstack( (dat_topo, dat_topo[:,0:2] ) )
-    lats = np.array( (*lats, lats[-1]+grid_spacing) )
-    dat_topo = np.vstack( (dat_topo, dat_topo[-1:,:]) )
-
-
-    '''these are saved if the user wants to get/visualize topography without having loaded a crustal thickness model'''
-    current_model['dat_topo'] = dat_topo
-    current_model['lons'] = lons
-    current_model['lats'] = lats
-
-    '''these will help the user load moho/thick models later on without having to reload topography, which takes a few seconds (grid_spacing=0.1 takes ~3.5 seconds)'''
-    current_model['grid_spacing'] = grid_spacing
-    current_model['lmax'] = lmax
-    current_model['grid_topo'] = topo_grid
+        # fpath_MarsTopo2600 = Path(fpath_MarsTopo2600)  # causes error when trying to readfile with pysh.SHCoeffs.from_file, it expects a string
+        topo_shcoeffs = pysh.SHCoeffs.from_file(fpath_MarsTopo2600, lmax=lmax, name='MarsTopo2600', units='m')
+        topo_shgrid = topo_shcoeffs.expand(grid='DH2', extend=True) * 1e-3 # convert m -> km
 
 
 
+    '''format into xarray dataset'''
+    topo_xrda = _fix_xarray_coords(topo_shgrid.to_xarray())
+    dat_crust_xrds = xr.Dataset({'topo': topo_xrda})
+    dat_crust_xrds.attrs = {
+        'units': 'km',
+        'grid_spacing': grid_spacing, 
+        'lmax': lmax,
+        'topo_model': 'MarsTopo2600',
+    }
 
 
+    _update_dict_to_match_xrds()
 
-
-
-
-
-
-def peek_models():
-    print('A summary of all available models can be found here: https://docs.google.com/spreadsheets/d/1ZDILcSPdbXAFp60VfyC4xTZzdnAVhx_U/edit?usp=sharing&ouid=107564547097010500390&rtpof=true&sd=true.')
 
 
 
@@ -291,192 +265,71 @@ def load_model(
     insight_thickness, 
     rho_north, 
     rho_south, 
-    grid_spacing = -1, 
     suppress_model_error = False,
-    suppress_grid_error = False,
 ) -> bool:
-    """
-    DESCRIPTION:
-    ------------
-        Load a moho and crustal thickness dataset based on the provided parameters. The data itself comes from a file of spherical harmonic coefficients which are downloaded/cached from a massive Google Drive folder.
-        
-        A summary of all available models can be found here: https://docs.google.com/spreadsheets/d/1ZDILcSPdbXAFp60VfyC4xTZzdnAVhx_U/edit?usp=sharing&ouid=107564547097010500390&rtpof=true&sd=true.
+
+    _initialize()
+
+
+    global dat_crust_xrds
     
-        
-    PARAMETERS:
-    ------------
-        RIM : str
-            Reference interior model name. Options are ["DWThot","DWThotCrust1","DWThotCrust1r","EH45Tcold","EH45TcoldCrust1","EH45TcoldCrust1r","EH45ThotCrust2","EH45ThotCrust2r","LFAK","SANAK","TAYAK","DWAK","ZG_DW","YOTHotRc1760kmDc40km","YOTHotRc1810kmDc40km","Khan2022"]
-        
-        insight_thickness : int
-            Predicted crustal thickness beneath the InSight landing site [km].
-        
-        rho_north, rho_south : int
-            Crustal density [kg/m^3] at north and south of dichotomy.
-        
-        suppress_model_error : bool (default False)
-            If no model with the provided parameters exists, raise an error if `suppress_model_error=False` (default), or return False if `suppress_model_error=True`.
-        
-        suppress_grid_error : bool (default False)
-            If you try to load a model with a grid spacing larger than the currently loaded topography model (not recommended), raise an error if `suppress_grid_error=False` (default), else continue if `suppress_grid_error=True`.
-
-        grid_spacing : float (default to `current_model['grid_spacing']` defined by topography model, default 0.1)
-            (We highly recommend not changing this value) Grid spacing between explicit data points [deg] -- anything between this is interpolated. This value should only be supplied if you want finer resolution than the current topography model (default 0.1). Be warned, it will take significantly longer to load, and you are limited by the topography's maximum spherical harmonic coefficient limit of 2600 at grid_spacing=0.0346.
-        
-
-    RETURN:
-    ------------
-        bool
-            True if model was successfully loaded, False if no model exists for the provided parameters and `suppress_model_error=True`.
-
-            
-    REFERENCES:
-    ------------
-        Raw data (spherical harmonic coefficients for the crust-mantle interface, i.e. Moho, with various parameters) as well as spreadsheet summarizing available models:
-            > Wieczorek, Mark A. (2022). InSight Crustal Thickness Archive [Data set]. Zenodo. https://doi.org/10.5281/zenodo.6477509
-            - The process of converting this data into the pre-computed registry we use is explained here: https://gist.github.com/Humboldt-Penguin/6f3f6e7e375f68c1368d094b8fdb70f0
-
-        Original paper: 
-            > Wieczorek, M. A., Broquet, A., McLennan, S. M., Rivoldini, A., Golombek, M., Antonangeli, D., et al. (2022). InSight constraints on the global character of the Martian crust. Journal of Geophysical Research: Planets, 127, e2022JE007298. https://doi.org/10.1029/2022JE007298
-
-    """
-
-
-    if grid_spacing == -1:
-        grid_spacing = current_model['grid_spacing']
-
-
-    '''temporarily disable the logger so we don't get unnecessary output every time a file is downloaded for the first time'''
-    logger = pooch.get_logger()
-    logger.disabled = True
-
-
-
-    '''save current model parameters'''
-    current_model['RIM'] = RIM
-    current_model['insight_thickness'] = insight_thickness
-    current_model['rho_north'] = rho_north
-    current_model['rho_south'] = rho_south
-
     model_name = f'{RIM}-{insight_thickness}-{rho_south}-{rho_north}'
-    current_model['model_name'] = model_name
 
 
 
+    '''load a pre-computed registry of moho models, which provides a google drive download link and a sha256 hash for a given model name'''
+    with utils.disable_pooch_logger():
+        fpath_moho_shcoeffs_registry = pooch.retrieve(
+            fname      = 'Crust_mohoSHcoeffs_rawdata_registry.json',
+            url        = r'https://drive.google.com/file/d/17JJuTFKkHh651-rt2J2eFKnxiki0w4ue/view?usp=sharing',
+            known_hash = 'sha256:1800ee2883dc6bcc82bd34eb2eebced5b59fbe6c593cbc4e9122271fd01c1491',
+            path       = _datapath / 'moho', 
+            downloader = utils.download_gdrive_file,
+        )
 
-    '''load a pre-computed registry, which provides a google drive download link and a sha256 hash for a given model name'''
-    filepath = pooch.retrieve(
-        fname='Crust_mohoSHcoeffs_rawdata_registry.json',
-        url=r'https://drive.google.com/file/d/17JJuTFKkHh651-rt2J2eFKnxiki0w4ue/view?usp=sharing',
-        known_hash='sha256:1800ee2883dc6bcc82bd34eb2eebced5b59fbe6c593cbc4e9122271fd01c1491',
-        path=datapath, 
-        downloader=utils.download_gdrive_file,
-    )
-
-    with open(filepath, 'r') as file:
-        rawdata_registry = json.load(file)
-
-
+    with open(fpath_moho_shcoeffs_registry, 'r') as file:
+        moho_shcoeffs_registry = json.load(file)
 
 
 
-    '''download SH coefficients for the chosen model from pooch'''
+    '''download SH coefficients for the chosen model'''
     try:
-        _ = rawdata_registry[model_name]
+        _ = moho_shcoeffs_registry[model_name]
     except KeyError:
         if suppress_model_error:
             return False
         else:
             raise ValueError(f'No Moho model with the inputs {model_name} exists.')
-    
-    filepath_shcoeffs = pooch.retrieve(
-        fname=f'{model_name}.txt',
-        url=rawdata_registry[model_name]['link'], 
-        known_hash=rawdata_registry[model_name]['hash'],
-        path=utils.getPath(datapath, 'moho_SH_coeffs'), 
-        downloader=utils.download_gdrive_file, 
-    )
+
+    with utils.disable_pooch_logger():
+        fpath_moho_shcoeffs = pooch.retrieve(
+            fname      = f'{model_name}.txt',
+            url        = moho_shcoeffs_registry[model_name]['link'], 
+            known_hash = moho_shcoeffs_registry[model_name]['hash'],
+            path       = _datapath / 'moho' / 'SH_coeffs', 
+            downloader = utils.download_gdrive_file, 
+        )
 
 
 
-    '''load 3 'grid'-type objects'''
+    '''load+save model'''
+    lmax = dat_crust_xrds.lmax
+    moho_shcoeffs = pysh.SHCoeffs.from_file(fpath_moho_shcoeffs)
+    moho_shgrid = moho_shcoeffs.expand(lmax=lmax, grid='DH2', extend=True) * 1e-3 # convert m -> km
 
-    if grid_spacing > current_model['grid_spacing'] and not suppress_grid_error:
-        raise ValueError(f"Provided grid spacing {grid_spacing} is larger than that of the currently loaded topography model, {current_model['grid_spacing']}. It is not recommended to increase grid spacing above 0.1, as you're losing topography resolution but speedups for loading moho models are insignificant (default grid_spacing=0.1 only takes ~0.1 seconds). If you still wish to proceed, provide `suppress_grid_error=True` as a function argument to suppress this error message.")
-    elif grid_spacing != current_model['grid_spacing']:
-        load_topo(grid_spacing=grid_spacing)
-
-
-    grid_spacing = current_model['grid_spacing']
-    lmax = current_model['lmax']
-    topo_grid = current_model['grid_topo']
-
-    moho = pysh.SHCoeffs.from_file(filepath_shcoeffs)
-    moho_grid = moho.expand(lmax=lmax, grid='DH2', extend=True) / 1.e3
-
-    thick_grid = topo_grid - moho_grid
-
+    moho_xrda = _fix_xarray_coords(moho_shgrid.to_xarray())
+    dat_crust_xrds['moho'] = moho_xrda
+    more_moho_attrs = {
+        'moho_model_name': model_name,
+        'moho_model_RIM': RIM,
+        'moho_model_insight_thickness': insight_thickness,
+        'moho_model_rho_north': rho_north,
+        'moho_model_rho_south': rho_south,
+    }
+    dat_crust_xrds.attrs.update(more_moho_attrs)
 
 
-
-    '''convert to numpy arrays (NOTE: THIS IS INDEXED [lat, lon], OPPOSITE OF GRS -- we prefer this way because it's easier to visualize, since array "rows" correspond to latitudes, and `np.hstack`/`np.vstack` are more intuitive). '''
-    dat_topo = topo_grid.to_array()
-    dat_moho = moho_grid.to_array()
-    dat_thick = thick_grid.to_array()
-
-    lons = utils.clon2lon(topo_grid.lons())
-    lats = topo_grid.lats()
-
-
-
-
-    '''rearrange: gridded data is originally in clon 0->360, and we converted to lon, so the current order is lon 0->180/-180->0. we want to convert to lon -180->180, so we rearrange columns.'''
-    i_left = np.where(lons == -180)[0][0]
-
-    lons = np.hstack((lons[i_left:], lons[:i_left]))
-    dat_topo = np.hstack((dat_topo[:,i_left:], dat_topo[:,:i_left]))
-    dat_moho = np.hstack((dat_moho[:,i_left:], dat_moho[:,:i_left]))
-    dat_thick = np.hstack((dat_thick[:,i_left:], dat_thick[:,:i_left]))
-
-
-
-    '''rearrange: flip lats so they're increasing'''
-    lats = np.flip(lats)
-    dat_topo = np.flip(dat_topo, axis=0)
-    dat_moho = np.flip(dat_moho, axis=0)
-    dat_thick = np.flip(dat_thick, axis=0)
-
-
-
-
-    '''edge case: lon is actually from -180->179, so we pad to -180->181 VIA *WRAPAROUND* (extra 1 degree on right side is for later bilinear interpolation alg).'''
-    lons = np.array( (*lons, lons[-1]+grid_spacing, lons[-1]+grid_spacing*2) )
-    dat_topo = np.hstack( (dat_topo, dat_topo[:,0:2] ) )
-    dat_moho = np.hstack( (dat_moho, dat_moho[:,0:2] ) )
-    dat_thick = np.hstack( (dat_thick, dat_thick[:,0:2] ) )
-
-
-    '''edge case: lat is actually from -90->90, so we pad to -90->91 VIA *DUPLICATION* (extra 1 degree on top side is for later bilinear interpolation alg).'''
-    lats = np.array( (*lats, lats[-1]+grid_spacing) )
-    dat_topo = np.vstack( (dat_topo, dat_topo[-1:,:]) )
-    dat_moho = np.vstack( (dat_moho, dat_moho[-1:,:]) )
-    dat_thick = np.vstack( (dat_thick, dat_thick[-1:,:]) )
-
-
-
-
-
-    '''save'''
-    current_model['lons'] = lons
-    current_model['lats'] = lats
-    current_model['dat_topo'] = dat_topo
-    current_model['dat_moho'] = dat_moho
-    current_model['dat_thick'] = dat_thick
-
-
-
-    logger.disabled = False
-
+    _update_dict_to_match_xrds()
 
     return True
 
@@ -488,27 +341,13 @@ def load_model(
 
 
 
-
-
-
-
-def __checkCoords(lon: float, lat: float) -> None:
-    if not (-180 <= lon <= 180):
-        raise ValueError(f'Longitude {lon} is not in range [-180, 180].')
-    if not(-90 <= lat <= 90):
-        raise ValueError(f'Latitude {lat} is not in range [-90, 90].')
-
-
-
-
-# def getTopo(lon, lat):
-#     return get(lon, lat, 'topo')
-
-# def getMoho(lon, lat):
-#     return get(lon, lat, 'moho')
-
-# def getThickness(lon, lat):
-#     return get(lon, lat, 'thick')
+def _fix_xarray_coords(dataarray):
+    dataarray = dataarray.sel(lon=slice(0,359.99999))   # Artiface of pyshtools `extend=True` thing, but I don't just flip it to False because that would clip out latitude -90 as well.
+    dataarray = dataarray.assign_coords(lon=xr.apply_ufunc(utils.clon2lon, dataarray.lon))
+    dataarray = dataarray.sortby('lon', ascending=True)
+    dataarray = dataarray.sortby('lat', ascending=True)
+    dataarray = xr.concat([dataarray, dataarray.sel(lon=-180).assign_coords(lon=180)], dim='lon')  # wraparound for interpolation
+    return dataarray
 
 
 
@@ -516,125 +355,71 @@ def __checkCoords(lon: float, lat: float) -> None:
 
 
 
+def _update_dict_to_match_xrds():
+    global dat_crust_dict
+    dat_crust_dict = {
+        'lats': dat_crust_xrds.lat.values,
+        'lons': dat_crust_xrds.lon.values,
+        'attrs': dat_crust_xrds.attrs, 
+    }
+    for data_var in list(dat_crust_xrds.data_vars):
+        dat_crust_dict[data_var] = dat_crust_xrds[data_var].values
 
-def get(
-    quantity: str, 
-    lon: float, 
-    lat: float
-) -> float:
-    """
-    DESCRIPTION:
-    ------------
-        Get topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), or crustal density ('rho'/'density') at a specific coordinate. Units are km and kg/m^3.
+
+
+
+
+
+
+
+
+
+
+
+
+
+def get_pt(
+    quantity, 
+    lon, 
+    lat, 
+    interpolate = False,
+):
+
+    '''checks'''
+    _initialize()
+
+    if not (-180 <= lon <= 360):
+        raise ValueError(f'Given longitude coordinate {lon=} is out of range [-180, 360].')
+    if not (-90 <= lat <= 90):
+        raise ValueError(f'Given latitude coordinate {lat=} is out of range [-90, 90].')
     
-        
-    PARAMETERS:
-    ------------
-        quantity : str
-            Options are ['topo'/'topography', 'moho', 'thick'/'thickness', 'rho'/'density'].
-
-        lon, lat : float
-            Coordinates in degrees, with longitude in range [-180, 180] and latitude in range [-90, 90].
-
-            
-    RETURN:
-    ------------
-        float
-            'topo' -> elevation [km]
-            'moho' -> elevation [km]
-            'thick' -> thickness [km]
-            'rho' -> density [kg/m^3]
-
-    """
+    lon = utils.clon2lon(lon) # this only modifies values btwn 180 and 360
 
 
-    __checkCoords(lon, lat)
 
+    '''accessing'''
+    if interpolate:
+        method = 'linear'
+    else:
+        method = 'nearest'
 
     match quantity:
 
-        case 'rho' | 'density':
-            
-            '''find the two nearest dichotomy coordinates by longitude, interpolate between them to find dichotomy latitude `tlat` at the given `lon`, then compare to `lat`.'''
-            i_lon = np.searchsorted(dichotomy_coords[:,0], lon, side='right') - 1
-            llon, llat = dichotomy_coords[i_lon]
-            rlon, rlat = dichotomy_coords[i_lon+1]
-            tlat = llat + (rlat-llat)*( (lon-llon)/(rlon-llon) )
-            return (current_model['rho_north'] if lat >= tlat else current_model['rho_south'])
+        case 'topo' | 'moho':
+            val = dat_crust_xrds.interp(lon=lon, lat=lat, assume_sorted=True, method=method)[quantity].item()
         
-        case 'topo' | 'topography':
-            dat = current_model['dat_topo']
-        case 'moho' | 'moho depth':
-            dat = current_model['dat_moho']
-        case 'thick' | 'thickness':
-            dat = current_model['dat_thick']
-
+        case 'crust' | 'crustal thickness' | 'crthick':
+            interped = dat_crust_xrds.interp(lon=lon, lat=lat, assume_sorted=True, method=method)
+            val = (interped.topo - interped.moho).item()
+        
+        case 'rho' | 'density' | 'crustal density':
+            if is_above_dichotomy(lon, lat):
+                val = get_model_info()['rho_north']
+            else:
+                val = get_model_info()['rho_south']
+        
         case _:
-            raise Exception('Invalid quantity. Options are ["topo"/"topography", "moho", "thick"/"thickness", "rho"/"density"].')
-
-
-
-
-    def bilinear_interpolation(x: float, y: float, points: list) -> float:
-        '''
-        Credit for this function: https://stackoverflow.com/a/8662355/22122546
-
-        Interpolate (x,y) from values associated with four points.
-        
-        points: list
-            four triplets:  (x, y, value).
-        
-        See formula at:  http://en.wikipedia.org/wiki/Bilinear_interpolation
-        '''
-
-        points = sorted(points)               # order points by x, then by y
-        (x1, y1, q11), (_x1, y2, q12), (x2, _y1, q21), (_x2, _y2, q22) = points
-
-        # if x1 != _x1 or x2 != _x2 or y1 != _y1 or y2 != _y2:
-        #     raise ValueError('points do not form a rectangle')
-        # if not x1 <= x <= x2 or not y1 <= y <= y2:
-        #     raise ValueError('(x, y) not within the rectangle')
-
-        return (q11 * (x2 - x) * (y2 - y) +
-                q21 * (x - x1) * (y2 - y) +
-                q12 * (x2 - x) * (y - y1) +
-                q22 * (x - x1) * (y - y1)
-            ) / ((x2 - x1) * (y2 - y1) + 0.0)
-    
-
-
-
-    '''get longitude and latitude (`np.searchsorted` returns the index at which the point would be inserted, i.e. point to the 'right', which is why we subtract 1 to get the point to the 'left'. earlier, we padded the edges of the data with extra points to allow for wraparound on the right side, so we don't need to worry about edge cases.)'''
-    i_lat = np.searchsorted(current_model['lats'], lat, side='right') - 1
-    j_lon = np.searchsorted(current_model['lons'], lon, side='right') - 1
-
-
-    points = (
-        (
-            current_model['lons'][j_lon],
-            current_model['lats'][i_lat],
-            dat[i_lat, j_lon]
-        ),
-        (
-            current_model['lons'][j_lon+1],
-            current_model['lats'][i_lat],
-            dat[i_lat, j_lon+1]
-        ),
-        (
-            current_model['lons'][j_lon],
-            current_model['lats'][i_lat+1],
-            dat[i_lat+1, j_lon]
-        ),
-        (
-            current_model['lons'][j_lon+1],
-            current_model['lats'][i_lat+1],
-            dat[i_lat+1, j_lon+1]
-        ),
-    )
-
-
-
-    val = bilinear_interpolation(lon, lat, points)
+            raise Exception('Invalid quantity. Options are ["topo", "moho", "crust"/"crustal thickness"/"crthick", "rho"/"density"/"crustal desntiy"].')
 
     return val
 
@@ -648,209 +433,97 @@ def get(
 
 
 
-
-
-
-def visualize(
-    quantity: str, 
-    lon_bounds: tuple = (-180,180), 
-    lat_bounds: tuple = (-90,90),  
-    grid_spacing: float = 1,
-    colormap='',
-    overlay=False,
-    transparency_data=0.6,
-    transparency_mola=0.9,
-    figsize=(10,7)
+def get_region(
+    quantity, 
+    lons         = None,
+    lats         = None,
+    lon_bounds   = None, 
+    lat_bounds   = None, 
+    grid_spacing = None,
+    num_points   = None, 
+    interpolate  = False,
+    as_xarray    = False,
 ):
     """
-    DESCRIPTION:
-    ------------
-        Create a map of topography ('topo'), moho elevation ('moho'), crustal thickness ('thick'), or crustal density ('rho'/'density'). Model name is formatted f'{Reference_Interior_Model}-{insight_thickness}-{rho_south}-{rho_north}'.
-    
-        
-    PARAMETERS:
-    ------------
-        quantity : str
-            Options are ['topo'/'topography', 'moho', 'thick'/'thickness', 'rho'/'density'].
+    lon_bounds, clon_bounds, lat_bounds : tuple(float, float)
+        - Bounding box for data swath. 
 
-        lon_bounds, lat_bounds : tuple(2 floats) (default entire map)
-            Bounding box for visualization. Longitude in range [-180, 180], latitude in range [-87.5, 87.5].
-        
-        grid_spacing : float (default to 1)
-            Spacing between "pixels" in degrees. Note that smaller resolutions will take longer to plot.
-        
-        colormap : str (defaults defined at `match quantity:`)
-            Colormap to use. See https://matplotlib.org/stable/tutorials/colors/colormaps.html for options.
-
-        overlay : bool (default False)
-            If True, overlay a transparent MOLA map on top of the GRS map. Note that this will take longer to plot.
-
-        transparency_data : float (default 0.6)
-            If overlay=True, set transparency of the GRS data from 0 (transparent) to 1 (opaque).
-
-        transparency_mola : float (default 0.9)
-            If overlay=True, set transparency of the MOLA map from 0 (transparent) to 1 (opaque).
-
-        figsize : (float, float) (default (10,7))
-            Width, height in inches. 
-
-            
-    REFERENCES:
-    ------------
-        'Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif'
-            > Fergason, R.L, Hare, T.M., & Laura, J. (2017). HRSC and MOLA Blended Digital Elevation Model at 200m. Astrogeology PDS Annex, U.S. Geological Survey.
-            - Original download link: https://astrogeology.usgs.gov/search/map/Mars/Topography/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendShade_Global_200mp_v2
-            - The original file is 5 GB which is unnecessarily high resolution. We downsample the file by reducing the width/height by a factor of 7. Maps with other reduction factors as well as the code to do so can be found here: https://drive.google.com/drive/u/0/folders/1SuURWNQEX3xpawN6a-LEWIduoNjSVqAF.
+    grid_spacing : float
+        - Spacing between points being sampled in degrees. Note that original data is 5x5 degree bins.
 
     """
 
-    lon_left, lon_right = lon_bounds
-    lat_bottom, lat_top = lat_bounds
 
-    __checkCoords(lon_left, lat_bottom)
-    __checkCoords(lon_left, lat_top)
-    __checkCoords(lon_right, lat_bottom)
-    __checkCoords(lon_right, lat_top)
+    '''args     (this approach is a bit verbose, but easy to understand and comprehensive)'''
 
+    error_msg = 'Invalid inputs for `get_region`. Options are: [1] `lons=..., lats=...` OR [2] `lon_bounds=..., lat_bounds=..., grid_spacing=...` OR [3] `lon_bounds=..., lat_bounds=..., num_points=...`.'
+    ## input case 1:
+    if ((lons is not None) and (lats is not None)):
+        ## eliminate case 2:
+        if ((lon_bounds is not None) or (lat_bounds is not None) or (grid_spacing is not None) or (num_points is not None)):
+            raise ValueError(error_msg)
+        ## execution:
+        pass
+    ## input case 2:
+    elif ((lon_bounds is not None) and (lat_bounds is not None)):
+        ## eliminate case 1:
+        if ((lons is not None) or (lats is not None)):
+            raise ValueError(error_msg)
+        ## execution (based on `grid_spacing` xor `num_points`):
+        if ((grid_spacing is not None) and (num_points is None)):
+            lons = np.arange(lon_bounds[0], lon_bounds[1]+grid_spacing, grid_spacing)
+            lats = np.arange(lat_bounds[0], lat_bounds[1]+grid_spacing, grid_spacing)
+        elif ((grid_spacing is None) and (num_points is not None)):
+            lons = np.linspace(lon_bounds[0], lon_bounds[1], num_points)
+            lats = np.linspace(lat_bounds[0], lat_bounds[1], num_points)
+        else:
+            raise ValueError(error_msg + ' (HINT: Specify either `grid_spacing` OR `num_points`, but not both.)')
             
 
-    match quantity:
-        case 'rho' | 'density':
-            title = f'Crustal Density with Model {current_model["model_name"]}'
-            cbar_title = 'Density [kg/m$^3$]'
-            colormap = 'viridis_r' if colormap == '' else colormap
 
-        case 'topo' | 'topography':
-            title = 'Topography'
-            cbar_title = 'Elevation [km]'
-            colormap = 'binary_r' if colormap == '' else colormap
-        
-        case 'moho' | 'moho depth':
-            title = f'Moho with Model {current_model["model_name"]}'
-            cbar_title = 'Elevation [km]'
-            colormap = 'magma' if colormap == '' else colormap
-        
-        case 'thick' | 'thickness':
-            title = f'Crustal Thickness with Model {current_model["model_name"]}'
-            cbar_title = 'Thickness [km]'
-            colormap = 'viridis' if colormap == '' else colormap
+    '''checks'''
+    _initialize()
 
-
-
-    '''
-    *** If adapting visualization function, modify this function ***
-    '''
-    def plotThis(lon, lat):
-        val = get(quantity, lon, lat)
-        return val
+    if np.any(lons < -180) or np.any(lons > 360):
+        raise ValueError(f'One value in given `lons` array is out of range [-180, 360].')
+    if np.any(lats < -90) or np.any(lats > 90):
+        raise ValueError(f'One value in given `lats` array is out of range [-90, 90].')
     
-
-
-
-    '''dataset to be plotted'''
-    dat = [[
-        plotThis(lon,lat)
-        for lon in np.arange(lon_left, lon_right, grid_spacing)]
-        for lat in np.arange(lat_bottom, lat_top, grid_spacing)]
-
+    lons = np.round(lons, 10)
+    lats = np.round(lats, 10)
     
-    '''apply mask'''
-    dat = np.asarray(dat)
-    # dat = np.ma.masked_where((dat < 0), dat)
-    # dat = np.ma.masked_where((dat == get_nanval()), dat)
-
-
-    '''plotting'''
-    fig = plt.figure(figsize=figsize)
-    ax = plt.axes()
+    lons = utils.clon2lon(lons) # this only modifies values btwn 180 and 360
 
 
 
-    '''mola overlay'''
-    if overlay:
-
-        global filepath_mola
-
-        if filepath_mola == '':
-            logger = pooch.get_logger()
-            logger.disabled = True
-            filepath_mola = pooch.retrieve(
-                fname='Mars_HRSC_MOLA_BlendShade_Global_200mp_v2_resized-7.tif',
-                url=r'https://drive.google.com/file/d/1i278DaeaFCtY19vREbE35OIm4aFRKXiB/view?usp=sharing',
-                known_hash='sha256:93d32f9b404b7eda1bb8b05caa989e55b219ac19a005d720800ecfe6e2b0bb6c',
-                path=utils.getPath(pooch.os_cache('redplanet'), 'Maps'),
-                downloader=utils.download_gdrive_file
-            )
-            logger.disabled = False
-
-        PIL.Image.MAX_IMAGE_PIXELS = 116159282 + 1 # get around PIL's "DecompressionBombError: Image size (-n- pixels) exceeds limit of 89478485 pixels, could be decompression bomb DOS attack." error
-
-        mola = PIL.Image.open(filepath_mola)
-
-        width, height = mola.size
-
-        left = ( (lon_left+180) / 360 ) * width
-        right = ( (lon_right+180) / 360 ) * width
-        top = ( (-lat_top+90) / 180 ) * height          # lat values are strange because PIL has (0,0) at the top left. don't think too hard about it, this works.
-        bottom = ( (-lat_bottom+90) / 180 ) * height
-
-        mola = mola.crop((left, top, right, bottom))
-
-        im_mola = ax.imshow(mola, cmap='gray', extent=[lon_left, lon_right, lat_bottom, lat_top], alpha=transparency_mola)
-
-        im_dat = ax.imshow(dat[::-1], cmap=colormap, extent=[lon_left, lon_right, lat_bottom, lat_top], alpha=transparency_data)
+    '''accessing'''
+    if interpolate:
+        method = 'linear'
     else:
-        im_dat = ax.imshow(dat[::-1], cmap=colormap, extent=[lon_left, lon_right, lat_bottom, lat_top])
+        method = 'nearest'
+
+    match quantity:
+
+        case 'topo' | 'moho':
+            arr = dat_crust_xrds.interp(lon=lons, lat=lats, assume_sorted=True, method=method)[quantity]
+        
+        case 'crust' | 'crustal thickness' | 'crthick':
+            interped = dat_crust_xrds.interp(lon=lons, lat=lats, assume_sorted=True, method=method)
+            arr = (interped.topo - interped.moho)
+        
+        case 'rho' | 'density' | 'crustal density':
+            vec_is_above_dichotomy = np.vectorize(is_above_dichotomy)
+            arr = vec_is_above_dichotomy(np.meshgrid(lons, lats)[0], np.meshgrid(lons, lats)[1])
+            arr = np.where(arr, get_model_info()['rho_north'], get_model_info()['rho_south'])
+        
+        case _:
+            raise Exception('Invalid quantity. Options are ["topo", "moho", "crust"/"crustal thickness"/"crthick", "rho"/"density"/"crustal density"].')
 
 
+    if as_xarray == False:
+        arr = arr.values
 
-
-
-
-
-    '''titles'''
-    ax.set_title(title)
-    ax.set_xlabel('Longitude')
-    ax.set_ylabel('Latitude')
-
-    '''axis formatter'''
-    ax.xaxis.set_major_formatter('{x}$\degree$')
-    ax.yaxis.set_major_formatter('{x}$\degree$')
-
-
-    # (aesthetic preference)
-    if lon_bounds == (-180,180):
-        x_spacing = 60
-        ax.set_xticks(np.linspace(lon_left, lon_right, int((lon_right-lon_left)/x_spacing)+1))
-
-    if lat_bounds == (-90,90):
-        y_spacing = 30
-        ax.set_yticks(np.linspace(lat_bottom, lat_top, int((lat_top-lat_bottom)/y_spacing)+1))
-
-
-    '''x ticks'''
-    '''Option 1: Set the spacing between x ticks'''
-    # x_spacing = 60
-    # ax.set_xticks(np.linspace(lon_left, lon_right, int((lon_right-lon_left)/x_spacing)+1))
-    '''Option 2: Set the number of x ticks'''
-    # x_ticks = 7
-    # ax.set_xticks(np.linspace(lon_left, lon_right, x_ticks))
-
-    '''y ticks'''
-    '''Option 1: Set the spacing between y ticks'''
-    # y_spacing = 25
-    # ax.set_yticks(np.linspace(lat_bottom, lat_top, int((lat_top-lat_bottom)/y_spacing)+1))
-    '''Option 2: Set the number of y ticks'''
-    # y_ticks = 7
-    # ax.set_yticks(np.linspace(lat_bottom, lat_top, y_ticks))
-
-
-    '''color bar'''
-    cax = fig.add_axes([ax.get_position().x1+0.02,ax.get_position().y0,0.02,ax.get_position().height])
-    cbar = plt.colorbar(im_dat, cax=cax)
-    cbar.set_label(f'{cbar_title}', y=0.5)
-
-    plt.show()
+    return arr
 
 
 
@@ -860,9 +533,42 @@ def visualize(
 
 
 
+'''
+[FOOTNOTE 1]
 
+- Manually loading topography is slightly inconvenient:
+    - Spherical harmonic coefficient file 'MarsTopo2600.shape.gz' is 73MB compressed, or 200MB decompressed. 
+    - Loading this and expanding to 0.1 degree grid spacing takes 3-7 seconds, which can be annoying for users if forced to wait everytime they import `redplanet.Crust`. 
+- So instead, I pre-compute the `pysh.ShGrid` object and save it to a numpy binary for speed -- corresponding code is below. This topography grid is loaded by default, and if the user wants a finer resolution, we download/load/expand manually.
 
+    ```
+    from redplanet import utils
+    import pyshtools as pysh
+    import pooch
+    from pathlib import Path
 
+    grid_spacing = 0.1
 
-############################################################################################################################################
-__init()
+    lmax = round(90. / grid_spacing - 1)
+    grid_spacing = 180. / (2 * lmax + 2)
+
+    with utils.disable_pooch_logger():
+        fpath_MarsTopo2600 = pooch.retrieve(
+            fname      = 'MarsTopo2600.shape.gz',
+            url        = r'https://drive.google.com/file/d/1so3sGXNzdYkTdpzjvOxwYBsvr1Y1lwXt/view?usp=sharing',
+            known_hash = 'sha256:8882a9ee7ee405d971b752028409f69bd934ba5411f1c64eaacd149e3b8642af',
+            path       = pooch.os_cache('redplanet') / 'Crust',
+            downloader = utils.download_gdrive_file,
+            processor  = pooch.Decompress(),
+        )
+
+    topo_shcoeffs = pysh.SHCoeffs.from_file(fpath_MarsTopo2600, lmax=lmax, name='MarsTopo2600', units='m')
+    topo_shgrid = topo_shcoeffs.expand(grid='DH2', extend=True) * 1e-3 # convert m -> km
+
+    fpath = Path.cwd() / 'pysh-ShGrid_MarsTopo2600_0.1deg_km.npy'
+    topo_shgrid.to_file(fpath, binary=True)
+    print(fpath)
+    print(f'sha256:{pooch.file_hash(fpath)}')
+    ```
+
+'''
