@@ -1,0 +1,5 @@
+see 6.2_crust_rewrite-dem_v2.2.ipynb
+    - [ ] generate xarray (chunked with dask) from shcoeffs
+        - WARNING: THIS TAKES 10 MINUTES
+        - WARNING: DON'T RUN RANDOM BENCHMARKING ACCESS/PLOTTING CODE BEFORE SAVING TO ZARR-ZIPSTORE, YOU COULD EASILY KILL THE KERNEL AND LOSE ALL PROGRESS LMAO 
+    - [ ] save to zarr.zipstore

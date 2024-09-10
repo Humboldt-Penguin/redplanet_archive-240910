@@ -1,0 +1,51 @@
+attempts at `rclone link` on rubox
+
+
+
+[1] `rclone link <file>`
+
+    $ rclone link rubox:_test/linksharing/24-05-05__goose_reply.txt
+    >> https://rutgers.box.com/s/7z8ymfkcwbrv26k2wizhdvfwxuclpo7r
+    
+    - but this defaults to "people in your company": https://files.catbox.moe/4iy8mr.png
+        - i can't change the default permissions in my settings for some reason bleh
+    
+    
+[2] `rclone link --expire 100y <file>`
+
+    - mentioned here: https://forum.rclone.org/t/rclone-link-dropbox-permissions/23211/3
+    
+    $ rclone link --expire 100y rubox:_test/linksharing/24-05-05__goose_reply.txt
+    >> https://rutgers.box.com/s/if3fd76psvkj7046e8mzq5i4a15aa5o6
+    
+    - still defaults to "people in your company" FUCK
+    
+    
+[3] first share entire folder w proper perms, then `rclone link <file>`
+    
+    - folder link: https://rutgers.box.com/s/mpqqvloepjod6mz6n76iybmnra35vq1p
+    
+    $ rclone link rubox:_test/linksharing/24-01-28__bike_conversion_notes.txt
+    >> https://rutgers.box.com/s/0ktbxnxw5wtnn3b5fd74qmr5z2udrvvr
+    
+    - still default to "people in your company" FUCK
+    
+    
+    
+    
+----------------------
+
+
+trying json logs:
+
+[1] --use-json-log
+
+    $ rclone link rubox:_test/linksharing/24-05-05__goose_reply.txt --use-json-log -vv --log-file temp.txt
+    >> logfile doesn't have the link spat out to stdout
+    
+
+[2] powershell piping
+    
+    $ rclone link rubox:_test/linksharing/24-05-05__goose_reply.txt > temp.txt
+    
+    - this actually works! *HOWEVER i need to find a way to spit out filename as well!

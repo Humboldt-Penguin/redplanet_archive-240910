@@ -1,0 +1,12 @@
+- SOURCE:
+	- MODEL NAME:
+		- black-forest-labs/flux-schnell
+	- LINK:
+		- https://replicate.com/black-forest-labs/flux-schnell?prediction=htx9516p7nrm40ch6karepv5n4
+	- MODEL AUTHOR LINK:
+		- https://blackforestlabs.ai/#get-flux
+	- WHERE I HEARD OF IT:
+		- https://www.youtube.com/watch?v=-7crpGKEA2g
+- PROMPT:
+	- Generate a minimalistic logo with a yellow snake (python) wrapping around a red/orange planet (Mars). Do not include any text. Do not add a ring around the planet. The snake should wrap around as a single helix/spiral.
+		- seed = 0

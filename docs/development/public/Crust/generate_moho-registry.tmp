@@ -1,7 +1,0 @@
-original docs:
-    https://gist.github.com/Humboldt-Penguin/6f3f6e7e375f68c1368d094b8fdb70f0
-
-^ rewrite this to use rclone rather than this random hacky combination of google drive zipextractor and javascript thingie
-    ==> ESPECIALLY since I'll be migrating from Box to Google Drive by 2024 July. 
-        - (just do it, reclaim google drive storage space for more common tasks lmao, box is perfectly suited for this purpose of random/misc cloud storage lake — also nice to have all my mars stuff in one place, including MAVEN bullshit)
-    - (also a nice opportunity to write the documentation as clearly as possible :)

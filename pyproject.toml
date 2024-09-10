@@ -1,5 +1,5 @@
 # This project has minimal configuration contained entirely within a sigle `pyproject.toml`. We lose out on some richer features, but it works.
-# 
+#
 # Writing good config files (pyproject.toml, setup.py, setup.cfg) is difficult. There are a few different standards, and understanding the details of differences/advantages/disadvantages is more trouble than it's worth. If you'd like to do your own research, see the resources below, but prepare to reread documentation many times as you eventually figure out the not-so-well-communicated intricacies.
 # Helpful resources:
 #   - PyPA (Python Packaging Authority)
@@ -7,6 +7,8 @@
 #     - Template: https://github.com/pypa/sampleproject/blob/main/pyproject.toml
 #       - See this file for more details on the various fields which have been removed from this file.
 #   - SetupTools documentation: https://setuptools.pypa.io/en/latest/index.html
+#
+# TODO: remake all of this with python's `poetry` at some point — manually handwriting everything was valuable (and fun) for first-time learning, but poetry will likely be more smooth, automated, clean, secure, and bug-free.
 
 
 
@@ -26,15 +28,15 @@ build-backend = "setuptools.build_meta"
 #######################################################################
 [project]
 
-name = "redplanet" 
-version = "1.0.0" 
+name = "redplanet"
+version = "1.0.0"
 
-description = "User-friendly access (i.e. APIs) for various Mars datasets and derived geophysics quantities. Create publication-ready plots on the fly or access the underlying data for more involved calculations." 
+description = "User-friendly access (i.e. APIs) for various Mars datasets and derived geophysics quantities. Create publication-ready plots on the fly or access the underlying data for more involved calculations."
 readme = "README.md"
 
 authors = [{name = "Zain Eris Kamal", email = "zain.eris.kamal@rutgers.edu" }]
 
-requires-python = "<3.12"  
+requires-python = "<3.12"
 # WARNING -- testing on other versions is very incomplete/limited, i've done most development on 3.11. feel free to try your luck <3
 # NOTE -- i keep catching errors if using python 3.12 and installing pyshtools, not sure why. this seems to fix it although you MUST explicitly make sure on your own that the python in your environment is <3.12 or it will silently fail! issue also mentioned here: https://stackoverflow.com/questions/77790237/installing-pyshtools-with-pip-modulenotfounderror-no-module-named-numpy-altho
 
@@ -48,12 +50,12 @@ license = {file = "LICENSE.txt"}
 
 # For an analysis of this field vs pip's requirements files see:
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
-dependencies = [ # Optional
-  "pooch", "gdown", "xxhash", 
-  "numpy", "scipy", "pandas", 
-  "xarray", "rioxarray", "dask", "zarr", 
-  "pyshtools<4.11", 
-  # "matplotlib", "plotly", 
+dependencies = [
+  "pooch", "gdown", "xxhash",
+  "numpy", "scipy", "pandas",
+  "xarray", "rioxarray", "dask", "zarr",
+  "matplotlib", "plotly",
+  "pyshtools<4.11",
 ]
 
 
@@ -63,15 +65,15 @@ dependencies = [ # Optional
 
 
 keywords = [
-  "mars", 
-  "remote sensing", "satellite", 
-  "geophysics", "geology", "planetary sciences", 
+  "mars",
+  "remote sensing", "satellite",
+  "geophysics", "geology", "planetary sciences",
   "grs", "crust", "topography", "heat flow"
-] 
+]
 
 
 # For a list of valid classifiers, see https://pypi.org/classifiers/
-classifiers = [ 
+classifiers = [
   "Development Status :: 5 - Production/Stable",
 
   "Operating System :: OS Independent",
@@ -97,7 +99,7 @@ classifiers = [
 
 
 #######################################################################
-[project.urls] 
+[project.urls]
 
 "Homepage" = "https://github.com/Humboldt-Penguin/redplanet"
 "Author" = "https://github.com/Humboldt-Penguin"
@@ -105,9 +107,9 @@ classifiers = [
 
 
 
-#######################################################################
+######################################################################
 [project.optional-dependencies]
-dev = ["plotly", "matplotlib", "jupyter"]
+dev = ["build", "twine"]
 
 
 

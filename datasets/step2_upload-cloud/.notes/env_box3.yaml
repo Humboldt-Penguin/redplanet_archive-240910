@@ -1,0 +1,10 @@
+name: box3
+channels:
+    - conda-forge
+dependencies:
+    - jupyter
+    - python-xxhash
+    - tqdm
+    - pip
+    - pip:
+        - box-sdk-gen[jwt]
